@@ -382,8 +382,8 @@ export default function Landing() {
             : "bg-white/60 dark:bg-gray-900/60 border-transparent"
         }`}
       >
-        <div className="max-w-6xl mx-auto h-16 px-4 sm:px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
+        <div className="max-w-6xl mx-auto h-16 px-4 sm:px-6 grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <Link to="/" className="flex items-center gap-2 justify-self-start">
             <BrandMark />
             <span className="hidden sm:inline font-semibold whitespace-nowrap">Inventra</span>
           </Link>
@@ -393,7 +393,7 @@ export default function Landing() {
             <a href="#plans" className="hover:text-gray-900 dark:hover:text-white">Plans</a>
             <a href="#faq" className="hover:text-gray-900 dark:hover:text-white">FAQ</a>
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 justify-self-end">
             <button
               onClick={toggleTheme}
               aria-label="Toggle dark mode"

@@ -188,7 +188,8 @@ export default function Layout() {
 
       <div className="flex-1 flex flex-col md:ml-64 min-w-0">
         {/* Topbar */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/70 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/60 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20">
+        <header className="h-16 bg-white/80 dark:bg-gray-900/70 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/60 px-4 md:px-6 sticky top-0 z-20">
+          <div className="h-full max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5 md:hidden">
             <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-white flex items-center justify-center font-bold text-xs">{brandInitials}</span>
             <span className="font-semibold text-sm dark:text-gray-100 truncate max-w-[10rem]">{brandName}</span>
@@ -220,6 +221,7 @@ export default function Layout() {
               </span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{user?.name?.split(" ")[0] || "Menu"}</span>
             </button>
+          </div>
           </div>
         </header>
 
