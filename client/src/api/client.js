@@ -32,6 +32,10 @@ api.interceptors.response.use(
       }
     }
 
+    if (status === 403 && err.response?.data?.code === "FORBIDDEN") {
+      window.dispatchEvent(new Event("permissions-changed"));
+    }
+
     if (status === 402 && err.response?.data?.code === "LICENSE_BLOCKED") {
       window.dispatchEvent(new Event("license-blocked"));
     }

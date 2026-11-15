@@ -1,7 +1,7 @@
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
-const { requireAuth, requireRole, requireFeature } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission, requireFeature } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
@@ -25,12 +25,12 @@ function buildProductWhere(req) {
   };
 }
 
-router.get("/count", async (req, res) => {
+router.get("/count", requireAnyPermission("products.view", "orders.create", "orders.edit", "inventory.view", "inventory.adjust", "reports.view"), async (req, res) => {
   const total = await prisma.product.count({ where: buildProductWhere(req) });
   res.json({ total });
 });
 
-router.get("/by-barcode/:code", requireFeature("barcode"), async (req, res) => {
+router.get("/by-barcode/:code", requireAnyPermission("products.view", "orders.create", "orders.edit", "inventory.view", "inventory.adjust", "reports.view"), requireFeature("barcode"), async (req, res) => {
   const product = await prisma.product.findFirst({
     where: { barcode: req.params.code, active: true },
     include: { supplier: { select: { id: true, name: true } } },
@@ -39,7 +39,7 @@ router.get("/by-barcode/:code", requireFeature("barcode"), async (req, res) => {
   res.json(product);
 });
 
-router.get("/", async (req, res) => {
+router.get("/", requireAnyPermission("products.view", "orders.create", "orders.edit", "inventory.view", "inventory.adjust", "reports.view"), async (req, res) => {
   const { lowStock, limit, offset } = req.query;
   const where = buildProductWhere(req);
 
@@ -83,7 +83,7 @@ const productSchema = z.object({
     .transform((v) => v || null),
 });
 
-router.post("/", requireRole("ADMIN", "STAFF"), async (req, res) => {
+router.post("/", requirePermission("products.create"), async (req, res) => {
   const parsed = productSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   if (parsed.data.supplierId && !(await prisma.supplier.findUnique({ where: { id: parsed.data.supplierId } }))) {
@@ -101,7 +101,7 @@ router.post("/", requireRole("ADMIN", "STAFF"), async (req, res) => {
   }
 });
 
-router.patch("/:id", requireRole("ADMIN", "STAFF"), async (req, res) => {
+router.patch("/:id", requirePermission("products.edit"), async (req, res) => {
   const parsed = productSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   if (parsed.data.supplierId && !(await prisma.supplier.findUnique({ where: { id: parsed.data.supplierId } }))) {
@@ -122,7 +122,7 @@ router.patch("/:id", requireRole("ADMIN", "STAFF"), async (req, res) => {
 // A product that appears in orders or stock history can't be removed without breaking those
 // records, so it is archived instead (hidden everywhere, history intact). One that was never
 // used is deleted for real.
-router.delete("/:id", requireRole("ADMIN"), async (req, res) => {
+router.delete("/:id", requirePermission("products.delete"), async (req, res) => {
   const product = await prisma.product.findUnique({ where: { id: req.params.id } });
   if (!product || !product.active) return res.status(404).json({ error: "Product not found" });
 

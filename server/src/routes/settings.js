@@ -2,7 +2,7 @@ const express = require("express");
 const { z } = require("zod");
 const { Prisma } = require("@prisma/client");
 const prisma = require("../lib/prisma");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth, requireAnyPermission } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 const { getTenantSettings } = require("../lib/settings");
 const { currentTenantId, prismaRaw } = require("../lib/db");
@@ -78,7 +78,15 @@ function loggable(data) {
   return invoiceLayout === undefined ? rest : { ...rest, invoiceLayout: invoiceLayout === null ? "reset to default" : "updated" };
 }
 
-router.patch("/", requireRole("ADMIN"), async (req, res) => {
+router.patch("/", requireAnyPermission("settings.edit", "invoices.design"), async (req, res) => {
+  // The invoice layout and the rest of the company settings are separate permissions
+  const keys = Object.keys(req.body || {});
+  const touchesLayout = keys.includes("invoiceLayout");
+  const touchesOther = keys.some((k) => k !== "invoiceLayout");
+  if ((touchesLayout && !req.permissions.has("invoices.design")) || (touchesOther && !req.permissions.has("settings.edit"))) {
+    return res.status(403).json({ error: "You don't have permission to do that", code: "FORBIDDEN" });
+  }
+
   const parsed = settingsSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 

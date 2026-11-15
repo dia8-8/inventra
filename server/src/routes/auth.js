@@ -8,6 +8,7 @@ const { requireAuthAllowBlocked } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 const { licenseFor, trialEndDate, TRIAL_MAX_USERS } = require("../lib/license");
 const { sendMail, passwordResetEmail } = require("../lib/mailer");
+const { effectivePermissions } = require("../lib/permissions");
 const { createLimiter } = require("../lib/rateLimit");
 
 const router = express.Router();
@@ -25,6 +26,7 @@ function publicUser(user, tenant) {
     email: user.email,
     role: user.role,
     companyName: tenant?.name || null,
+    permissions: effectivePermissions(user),
   };
 }
 

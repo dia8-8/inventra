@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
@@ -8,6 +9,7 @@ const emptyForm = { name: "", contactPerson: "", phone: "", email: "", address: 
 
 export default function Suppliers() {
   const notify = useNotify();
+  const { can } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -93,9 +95,11 @@ export default function Suppliers() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Suppliers</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{suppliers.length} total</p>
         </div>
-        <button onClick={openNew} className="btn-primary">
-          + Add Supplier
-        </button>
+        {can("suppliers.create") && (
+          <button onClick={openNew} className="btn-primary">
+            + Add Supplier
+          </button>
+        )}
       </div>
 
       <input
@@ -123,12 +127,16 @@ export default function Suppliers() {
                 <div className="text-xs text-gray-400 dark:text-gray-500">{s.productCount} products</div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => openEdit(s)} className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1">
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(s)} className="btn-ghost btn-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
-                  Delete
-                </button>
+                {can("suppliers.edit") && (
+                  <button onClick={() => openEdit(s)} className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1">
+                    Edit
+                  </button>
+                )}
+                {can("suppliers.delete") && (
+                  <button onClick={() => handleDelete(s)} className="btn-ghost btn-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           ))}

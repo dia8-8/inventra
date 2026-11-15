@@ -28,23 +28,24 @@ function initialsOf(name) {
   return words.slice(0, 2).map((w) => Array.from(w)[0]).join("").toUpperCase();
 }
 
+// `perm` / `anyPerm`: the permission(s) needed to see the entry. `adminOnly`: administrators only.
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: DashboardIcon, end: true, group: "Overview" },
-  { to: "/orders", label: "Orders", icon: OrdersIcon, group: "Sales" },
-  { to: "/customers", label: "Customers", icon: CustomersIcon, group: "Sales" },
-  { to: "/deliveries", label: "Deliveries", icon: DeliveriesIcon, feature: "deliveries", group: "Sales" },
-  { to: "/products", label: "Products", icon: ProductsIcon, group: "Stock" },
-  { to: "/inventory", label: "Inventory", icon: InventoryIcon, group: "Stock" },
-  { to: "/scan", label: "Scan", icon: ScanIcon, feature: "barcode", group: "Stock" },
-  { to: "/suppliers", label: "Suppliers", icon: SuppliersIcon, group: "Stock" },
-  { to: "/expenses", label: "Expenses", icon: ExpensesIcon, group: "Finance" },
-  { to: "/reports", label: "Reports", icon: ReportsIcon, feature: "reports", group: "Finance" },
+  { to: "/", label: "Dashboard", icon: DashboardIcon, end: true, group: "Overview", perm: "dashboard.view" },
+  { to: "/orders", label: "Orders", icon: OrdersIcon, group: "Sales", perm: "orders.view" },
+  { to: "/customers", label: "Customers", icon: CustomersIcon, group: "Sales", perm: "customers.view" },
+  { to: "/deliveries", label: "Deliveries", icon: DeliveriesIcon, feature: "deliveries", group: "Sales", perm: "deliveries.view" },
+  { to: "/products", label: "Products", icon: ProductsIcon, group: "Stock", perm: "products.view" },
+  { to: "/inventory", label: "Inventory", icon: InventoryIcon, group: "Stock", perm: "inventory.view" },
+  { to: "/scan", label: "Scan", icon: ScanIcon, feature: "barcode", group: "Stock", perm: "inventory.adjust" },
+  { to: "/suppliers", label: "Suppliers", icon: SuppliersIcon, group: "Stock", perm: "suppliers.view" },
+  { to: "/expenses", label: "Expenses", icon: ExpensesIcon, group: "Finance", perm: "expenses.view" },
+  { to: "/reports", label: "Reports", icon: ReportsIcon, feature: "reports", group: "Finance", perm: "reports.view" },
 ];
 
 const ADMIN_NAV_ITEMS = [
-  { to: "/users", label: "Users", icon: UsersAdminIcon, group: "Admin" },
-  { to: "/settings", label: "Settings", icon: SettingsIcon, group: "Admin" },
-  { to: "/activity-log", label: "Activity Log", icon: ActivityIcon, feature: "activity-log", group: "Admin" },
+  { to: "/users", label: "Users", icon: UsersAdminIcon, group: "Admin", adminOnly: true },
+  { to: "/settings", label: "Settings", icon: SettingsIcon, group: "Admin", anyPerm: ["settings.edit", "invoices.design"] },
+  { to: "/activity-log", label: "Activity Log", icon: ActivityIcon, feature: "activity-log", group: "Admin", perm: "activity.view" },
 ];
 
 const PLATFORM_NAV_ITEMS = [{ to: "/platform", label: "Clients", icon: CustomersIcon, end: true }];
@@ -52,11 +53,11 @@ const PLATFORM_NAV_ITEMS = [{ to: "/platform", label: "Clients", icon: Customers
 const DRIVER_NAV_ITEMS = [{ to: "/deliveries", label: "Deliveries", icon: DeliveriesIcon, end: true }];
 
 const MOBILE_NAV_ITEMS = [
-  { to: "/", label: "Home", icon: DashboardIcon, end: true },
-  { to: "/orders", label: "Orders", icon: OrdersIcon },
-  { to: "/customers", label: "Clients", icon: CustomersIcon },
-  { to: "/products", label: "Products", icon: ProductsIcon },
-  { to: "/inventory", label: "Stock", icon: InventoryIcon },
+  { to: "/", label: "Home", icon: DashboardIcon, end: true, perm: "dashboard.view" },
+  { to: "/orders", label: "Orders", icon: OrdersIcon, perm: "orders.view" },
+  { to: "/customers", label: "Clients", icon: CustomersIcon, perm: "customers.view" },
+  { to: "/products", label: "Products", icon: ProductsIcon, perm: "products.view" },
+  { to: "/inventory", label: "Stock", icon: InventoryIcon, perm: "inventory.view" },
 ];
 
 const ROLE_LABELS = { ADMIN: "Admin", STAFF: "Staff", DRIVER: "Driver", SUPER_ADMIN: "Platform owner" };
@@ -73,7 +74,7 @@ function groupItems(items) {
 }
 
 export default function Layout() {
-  const { user, logout, license, hasFeature } = useAuth();
+  const { user, logout, license, hasFeature, can, canAny } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -89,19 +90,20 @@ export default function Layout() {
 
   const isDriver = user?.role === "DRIVER";
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
-  // Hide anything the client's plan doesn't include
-  const allowed = (list) => list.filter((i) => !i.feature || hasFeature(i.feature));
-  const items = isSuperAdmin
-    ? PLATFORM_NAV_ITEMS
-    : isDriver
-      ? DRIVER_NAV_ITEMS
-      : user?.role === "ADMIN"
-        ? allowed([...NAV_ITEMS, ...ADMIN_NAV_ITEMS])
-        : allowed(NAV_ITEMS);
+  // Hide anything the plan doesn't include and anything this person has no permission for
+  const allowed = (list) =>
+    list.filter(
+      (i) =>
+        (!i.feature || hasFeature(i.feature)) &&
+        (!i.perm || can(i.perm)) &&
+        (!i.anyPerm || canAny(...i.anyPerm)) &&
+        (!i.adminOnly || user?.role === "ADMIN")
+    );
+  const items = isSuperAdmin ? PLATFORM_NAV_ITEMS : isDriver ? DRIVER_NAV_ITEMS : allowed([...NAV_ITEMS, ...ADMIN_NAV_ITEMS]);
   const navGroups = groupItems(items);
-  const mobileBottomItems = isSuperAdmin ? PLATFORM_NAV_ITEMS : isDriver ? DRIVER_NAV_ITEMS : MOBILE_NAV_ITEMS;
+  const mobileBottomItems = isSuperAdmin ? PLATFORM_NAV_ITEMS : isDriver ? DRIVER_NAV_ITEMS : allowed(MOBILE_NAV_ITEMS);
   const mobileExtraItems = isDriver || isSuperAdmin ? [] : allowed(NAV_ITEMS).filter((i) => !MOBILE_NAV_ITEMS.some((m) => m.to === i.to));
-  const adminMobileItems = user?.role === "ADMIN" ? allowed(ADMIN_NAV_ITEMS) : [];
+  const adminMobileItems = isDriver || isSuperAdmin ? [] : allowed(ADMIN_NAV_ITEMS);
   const brandName = isSuperAdmin ? "Platform" : user?.companyName || "Inventra";
   const brandInitials = initialsOf(brandName);
   const userInitials = initialsOf(user?.name);

@@ -1,13 +1,13 @@
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
 router.use(requireAuth);
 
-router.get("/", async (req, res) => {
+router.get("/", requireAnyPermission("suppliers.view", "products.create", "products.edit", "inventory.view", "inventory.adjust"), async (req, res) => {
   const { search } = req.query;
   const where = search
     ? {
@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
   res.json(withCounts);
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requirePermission("suppliers.view"), async (req, res) => {
   const supplier = await prisma.supplier.findUnique({
     where: { id: req.params.id },
     include: {
@@ -58,7 +58,7 @@ const supplierSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requirePermission("suppliers.create"), async (req, res) => {
   const parsed = supplierSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
@@ -68,7 +68,7 @@ router.post("/", async (req, res) => {
   res.status(201).json(supplier);
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requirePermission("suppliers.edit"), async (req, res) => {
   const parsed = supplierSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
@@ -81,7 +81,7 @@ router.patch("/:id", async (req, res) => {
   res.json(supplier);
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePermission("suppliers.delete"), async (req, res) => {
   await prisma.supplier.delete({ where: { id: req.params.id } });
   await logActivity({ userId: req.user.id, action: "DELETE", entityType: "Supplier", entityId: req.params.id });
   res.status(204).end();

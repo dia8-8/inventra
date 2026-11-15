@@ -29,7 +29,7 @@ function shortDate(key) {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const chart = useChartTheme();
   const [data, setData] = useState(null);
   const [trends, setTrends] = useState(null);
@@ -74,30 +74,34 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/reports" className="btn-secondary">
-            <ReportsIcon className="h-4 w-4" />
-            Reports
-          </Link>
-          <Link to="/orders" className="btn-primary">
-            <PlusIcon className="h-4 w-4" />
-            New order
-          </Link>
+          {can("reports.view") && (
+            <Link to="/reports" className="btn-secondary">
+              <ReportsIcon className="h-4 w-4" />
+              Reports
+            </Link>
+          )}
+          {can("orders.create") && (
+            <Link to="/orders" className="btn-primary">
+              <PlusIcon className="h-4 w-4" />
+              New order
+            </Link>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4 stagger">
-        <StatCard label="Sales today" value={data.totalSalesToday} format={money} icon={CashIcon} tone="brand" to="/orders" delta={salesDelta} spark={salesValues} />
+        <StatCard label="Sales today" value={data.totalSalesToday} format={money} icon={CashIcon} tone="brand" to={can("orders.view") ? "/orders" : undefined} delta={salesDelta} spark={salesValues} />
         <StatCard label="Profit today" value={data.profitToday} format={money} icon={TrendUpIcon} tone={data.profitToday >= 0 ? "good" : "bad"} />
-        <StatCard label="Pending orders" value={data.pendingOrders} icon={ClockIcon} tone="info" to="/orders?status=PENDING" />
+        <StatCard label="Pending orders" value={data.pendingOrders} icon={ClockIcon} tone="info" to={can("orders.view") ? "/orders?status=PENDING" : undefined} />
         <StatCard label="Delivered today" value={data.completedDeliveriesToday} icon={CheckCircleIcon} tone="good" />
         <StatCard
           label="Unpaid invoices"
           display={`${data.unpaidInvoicesCount} · ${moneyCompact(data.unpaidInvoicesTotal)}`}
           icon={ReceiptIcon}
           tone={data.unpaidInvoicesCount > 0 ? "warn" : "neutral"}
-          to="/orders?paymentStatus=UNPAID"
+          to={can("orders.view") ? "/orders?paymentStatus=UNPAID" : undefined}
         />
-        <StatCard label="Low stock items" value={data.lowStockCount} icon={AlertIcon} tone={data.lowStockCount > 0 ? "bad" : "good"} to="/inventory" />
+        <StatCard label="Low stock items" value={data.lowStockCount} icon={AlertIcon} tone={data.lowStockCount > 0 ? "bad" : "good"} to={can("inventory.view") ? "/inventory" : undefined} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -186,7 +190,7 @@ export default function Dashboard() {
         <section className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold dark:text-gray-100">Low stock</h2>
-            {data.lowStockProducts.length > 0 && (
+            {data.lowStockProducts.length > 0 && can("inventory.view") && (
               <Link to="/inventory" className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">
                 View all
               </Link>

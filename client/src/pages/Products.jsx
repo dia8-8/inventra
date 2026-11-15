@@ -17,8 +17,7 @@ const PAGE_SIZE = 12;
 
 export default function Products() {
   const notify = useNotify();
-  const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const { can } = useAuth();
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
   const [suppliers, setSuppliers] = useState([]);
@@ -51,7 +50,11 @@ export default function Products() {
   }, [search, page]);
 
   useEffect(() => {
-    api.get("/suppliers").then(({ data }) => setSuppliers(data));
+    if (!can("products.create") && !can("products.edit")) return;
+    api
+      .get("/suppliers")
+      .then(({ data }) => setSuppliers(data))
+      .catch(() => {});
   }, []);
 
   function openNew() {
@@ -118,9 +121,11 @@ export default function Products() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Products</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{total} total</p>
         </div>
-        <button onClick={openNew} className="btn-primary">
-          + Add Product
-        </button>
+        {can("products.create") && (
+          <button onClick={openNew} className="btn-primary">
+            + Add Product
+          </button>
+        )}
       </div>
 
       <input
@@ -164,10 +169,12 @@ export default function Products() {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => openEdit(p)} className="btn-secondary btn-sm">
-                    Edit
-                  </button>
-                  {isAdmin && (
+                  {can("products.edit") && (
+                    <button onClick={() => openEdit(p)} className="btn-secondary btn-sm">
+                      Edit
+                    </button>
+                  )}
+                  {can("products.delete") && (
                     <button onClick={() => handleDelete(p)} className="btn-danger btn-sm">
                       Delete
                     </button>

@@ -28,6 +28,18 @@ export function RoleRoute({ roles, children }) {
   return children;
 }
 
+// Only people holding one of the listed permissions get in; everyone else goes home.
+export function PermissionRoute({ perm, anyOf, children }) {
+  const { user, loading, can, canAny } = useAuth();
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading…</div>;
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  const allowed = anyOf ? canAny(...anyOf) : can(perm);
+  if (!allowed) return <Navigate to="/" replace />;
+  return children;
+}
+
 // Blocks pages that aren't part of the client's plan (the server enforces this too)
 export function FeatureRoute({ feature, children }) {
   const { hasFeature } = useAuth();

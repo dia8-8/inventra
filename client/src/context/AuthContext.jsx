@@ -54,6 +54,13 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener("license-blocked", onBlocked);
   }, [refresh]);
 
+  // An admin may have changed this person's permissions since they signed in
+  useEffect(() => {
+    const onForbidden = () => refresh().catch(() => {});
+    window.addEventListener("permissions-changed", onForbidden);
+    return () => window.removeEventListener("permissions-changed", onForbidden);
+  }, [refresh]);
+
   async function login(email, password) {
     const { data } = await api.post("/auth/login", { email, password });
     localStorage.setItem("vc_token", data.token);
@@ -72,10 +79,14 @@ export function AuthProvider({ children }) {
     clearSession();
   }
 
+  // What this person may do. Admins can do everything; others have the list the server sent.
+  const can = (permission) => user?.role === "ADMIN" || !!user?.permissions?.includes(permission);
+  const canAny = (...permissions) => permissions.some(can);
+
   const hasFeature = (feature) => user?.role === "SUPER_ADMIN" || !!license?.features?.includes(feature);
 
   return (
-    <AuthContext.Provider value={{ user, license, loading, login, register, logout, refresh, hasFeature }}>
+    <AuthContext.Provider value={{ user, license, loading, login, register, logout, refresh, hasFeature, can, canAny }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,6 +3,8 @@ import api from "../api/client";
 import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
+import PermissionsModal from "../components/PermissionsModal";
+import { ShieldIcon } from "../components/icons";
 import { useAuth } from "../context/AuthContext";
 
 const ROLES = ["ADMIN", "STAFF", "DRIVER"];
@@ -16,6 +18,15 @@ export default function Users() {
   const [showNew, setShowNew] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "STAFF" });
   const [error, setError] = useState("");
+  const [catalog, setCatalog] = useState(null);
+  const [editingPerms, setEditingPerms] = useState(null);
+
+  useEffect(() => {
+    api
+      .get("/users/permissions")
+      .then(({ data }) => setCatalog(data))
+      .catch(() => {});
+  }, []);
 
   function load() {
     setLoading(true);
@@ -114,8 +125,24 @@ export default function Users() {
                   )}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email}</div>
+                <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  {u.role === "ADMIN" && "Full access"}
+                  {u.role === "DRIVER" && "Deliveries only"}
+                  {u.role === "STAFF" &&
+                    (u.customPermissions ? (
+                      <span className="badge !px-2 !py-0 bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200">Custom · {u.permissions.length} permissions</span>
+                    ) : (
+                      "Standard staff permissions"
+                    ))}
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                {u.role === "STAFF" && (
+                  <button onClick={() => setEditingPerms(u)} disabled={!catalog} className="btn-secondary btn-sm">
+                    <ShieldIcon className="h-4 w-4" />
+                    Permissions
+                  </button>
+                )}
                 <select
                   value={u.role}
                   disabled={u.id === me.id}
@@ -150,6 +177,18 @@ export default function Users() {
             </div>
           ))}
         </div>
+      )}
+
+      {editingPerms && catalog && (
+        <PermissionsModal
+          user={editingPerms}
+          catalog={catalog}
+          onClose={() => setEditingPerms(null)}
+          onSaved={() => {
+            setEditingPerms(null);
+            load();
+          }}
+        />
       )}
 
       {showNew && (

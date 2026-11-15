@@ -1,11 +1,11 @@
 const express = require("express");
 const prisma = require("../lib/prisma");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission } = require("../middleware/auth");
 
 const router = express.Router();
 router.use(requireAuth);
 
-router.get("/", async (req, res) => {
+router.get("/", requirePermission("dashboard.view"), async (req, res) => {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date();
@@ -55,7 +55,7 @@ function localDateKey(d) {
   return `${year}-${month}-${day}`;
 }
 
-router.get("/trends", async (req, res) => {
+router.get("/trends", requirePermission("dashboard.view"), async (req, res) => {
   const days = 14;
   const start = new Date();
   start.setHours(0, 0, 0, 0);

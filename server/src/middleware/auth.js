@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { prismaRaw, runWithTenant } = require("../lib/db");
 const { licenseFor } = require("../lib/license");
+const { effectivePermissions } = require("../lib/permissions");
 
 function buildAuth({ allowBlocked }) {
   return async function auth(req, res, next) {
@@ -25,6 +26,7 @@ function buildAuth({ allowBlocked }) {
       }
 
       req.user = user;
+      req.permissions = new Set(effectivePermissions(user));
 
       // Platform super admins belong to no tenant and are never license-gated.
       if (user.role === "SUPER_ADMIN") return next();
@@ -54,6 +56,22 @@ const requireAuth = buildAuth({ allowBlocked: false });
 // For endpoints the UI must reach even when the license is blocked (to show why).
 const requireAuthAllowBlocked = buildAuth({ allowBlocked: true });
 
+// The signed-in user must hold the permission (admins hold all of them).
+function requirePermission(permission) {
+  return requireAnyPermission(permission);
+}
+
+// ...or hold at least one of several. Used for lookup lists (e.g. the customer list is also
+// needed by anyone who can create orders, even without the Customers page).
+function requireAnyPermission(...permissions) {
+  return (req, res, next) => {
+    if (!req.permissions || !permissions.some((p) => req.permissions.has(p))) {
+      return res.status(403).json({ error: "You don't have permission to do that", code: "FORBIDDEN" });
+    }
+    next();
+  };
+}
+
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
@@ -73,4 +91,4 @@ function requireFeature(feature) {
   };
 }
 
-module.exports = { requireAuth, requireAuthAllowBlocked, requireRole, requireFeature };
+module.exports = { requireAuth, requireAuthAllowBlocked, requireRole, requireFeature, requirePermission, requireAnyPermission };

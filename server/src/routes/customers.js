@@ -1,13 +1,13 @@
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
 router.use(requireAuth);
 
-router.get("/", async (req, res) => {
+router.get("/", requireAnyPermission("customers.view", "orders.create", "orders.edit", "reports.view"), async (req, res) => {
   const { search } = req.query;
   const where = search
     ? {
@@ -37,7 +37,7 @@ router.get("/", async (req, res) => {
   res.json(withBalance);
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAnyPermission("customers.view", "orders.create", "orders.edit", "reports.view"), async (req, res) => {
   const customer = await prisma.customer.findUnique({
     where: { id: req.params.id },
     include: {
@@ -59,7 +59,7 @@ const customerSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requirePermission("customers.create"), async (req, res) => {
   const parsed = customerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
@@ -71,7 +71,7 @@ router.post("/", async (req, res) => {
   res.status(201).json(customer);
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requirePermission("customers.edit"), async (req, res) => {
   const parsed = customerSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
@@ -84,7 +84,7 @@ router.patch("/:id", async (req, res) => {
   res.json(customer);
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePermission("customers.delete"), async (req, res) => {
   const customer = await prisma.customer.findUnique({ where: { id: req.params.id } });
   if (!customer) return res.status(404).json({ error: "Customer not found" });
   const orderCount = await prisma.order.count({ where: { customerId: customer.id } });
@@ -110,7 +110,7 @@ async function ownsPriceTargets(req, res, next) {
   next();
 }
 
-router.get("/:id/prices", ownsPriceTargets, async (req, res) => {
+router.get("/:id/prices", requireAnyPermission("customers.view", "orders.create", "orders.edit"), ownsPriceTargets, async (req, res) => {
   const prices = await prisma.customerPrice.findMany({
     where: { customerId: req.params.id },
     include: { product: { select: { id: true, name: true, unit: true, sellingPrice: true } } },
@@ -122,7 +122,7 @@ const customerPriceSchema = z.object({
   unitPrice: z.coerce.number().nonnegative(),
 });
 
-router.put("/:id/prices/:productId", ownsPriceTargets, async (req, res) => {
+router.put("/:id/prices/:productId", requirePermission("customers.edit"), ownsPriceTargets, async (req, res) => {
   const parsed = customerPriceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
@@ -137,7 +137,7 @@ router.put("/:id/prices/:productId", ownsPriceTargets, async (req, res) => {
   res.json(price);
 });
 
-router.delete("/:id/prices/:productId", ownsPriceTargets, async (req, res) => {
+router.delete("/:id/prices/:productId", requirePermission("customers.edit"), ownsPriceTargets, async (req, res) => {
   await prisma.customerPrice.deleteMany({ where: { customerId: req.params.id, productId: req.params.productId } });
   await logActivity({ userId: req.user.id, action: "DELETE", entityType: "CustomerPrice", entityId: `${req.params.id}:${req.params.productId}` });
   res.status(204).end();

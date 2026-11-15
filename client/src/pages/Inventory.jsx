@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { Skeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
@@ -9,6 +10,7 @@ const TYPE_LABELS = { IN: "Incoming stock", OUT: "Sale", ADJUSTMENT: "Adjustment
 
 export default function Inventory() {
   const notify = useNotify();
+  const { can } = useAuth();
   const [products, setProducts] = useState([]);
   const [movements, setMovements] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -29,7 +31,11 @@ export default function Inventory() {
 
   useEffect(load, []);
   useEffect(() => {
-    api.get("/suppliers").then(({ data }) => setSuppliers(data));
+    if (!can("inventory.adjust")) return;
+    api
+      .get("/suppliers")
+      .then(({ data }) => setSuppliers(data))
+      .catch(() => {});
   }, []);
 
   function openMovement(product) {
@@ -94,12 +100,14 @@ export default function Inventory() {
               <div className={`text-sm font-semibold shrink-0 w-24 text-right ${low ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}>
                 {p.stockQty} {p.unit.toLowerCase()}
               </div>
-              <button
-                onClick={() => openMovement(p)}
-                className="btn-soft btn-sm shrink-0 w-20 text-center"
-              >
-                Adjust
-              </button>
+              {can("inventory.adjust") && (
+                <button
+                  onClick={() => openMovement(p)}
+                  className="btn-soft btn-sm shrink-0 w-20 text-center"
+                >
+                  Adjust
+                </button>
+              )}
             </div>
           );
         })}

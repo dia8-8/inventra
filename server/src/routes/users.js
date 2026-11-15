@@ -5,17 +5,45 @@ const prisma = require("../lib/prisma");
 const { prismaRaw } = require("../lib/db");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
+const { Prisma } = require("@prisma/client");
+const { GROUPS, IMPLIES, VALID, STAFF_DEFAULT, DRIVER_DEFAULT, normalize, effectivePermissions } = require("../lib/permissions");
 
 const router = express.Router();
 
 router.use(requireAuth, requireRole("ADMIN"));
 
+const USER_SELECT = { id: true, name: true, email: true, role: true, active: true, createdAt: true, permissions: true };
+
+// What the admin screen needs to know about a user, including what they can actually do
+function serialize(u) {
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    active: u.active,
+    createdAt: u.createdAt,
+    customPermissions: Array.isArray(u.permissions),
+    permissions: effectivePermissions(u),
+  };
+}
+
+// The list of permissions and the defaults, so the screen never has to hard-code them
+router.get("/permissions", (req, res) => {
+  res.json({ groups: GROUPS, implies: IMPLIES, staffDefault: STAFF_DEFAULT, driverDefault: DRIVER_DEFAULT });
+});
+
+// null/undefined = the role's defaults; a list = custom (checked against the catalog)
+function parsePermissions(list) {
+  if (list === null || list === undefined) return { value: null };
+  const unknown = list.filter((k) => !VALID.has(k));
+  if (unknown.length) return { error: `Unknown permission: ${unknown[0]}` };
+  return { value: normalize(list) };
+}
+
 router.get("/", async (req, res) => {
-  const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
-    orderBy: { createdAt: "asc" },
-  });
-  res.json(users);
+  const users = await prisma.user.findMany({ select: USER_SELECT, orderBy: { createdAt: "asc" } });
+  res.json(users.map(serialize));
 });
 
 const createSchema = z.object({
@@ -23,6 +51,7 @@ const createSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum(["ADMIN", "STAFF", "DRIVER"]),
+  permissions: z.array(z.string()).nullable().optional(),
 });
 
 router.post("/", async (req, res) => {
@@ -45,15 +74,19 @@ router.post("/", async (req, res) => {
     return res.status(403).json({ error: `Your plan allows ${req.license.maxUsers} users. Contact us to raise the limit.` });
   }
 
+  const perms = parsePermissions(parsed.data.permissions);
+  if (perms.error) return res.status(400).json({ error: perms.error });
+  if (perms.value && role !== "STAFF") return res.status(400).json({ error: "Custom permissions apply to staff accounts only" });
+
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { name, email: email.toLowerCase(), passwordHash, role },
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+    data: { name, email: email.toLowerCase(), passwordHash, role, ...(perms.value ? { permissions: perms.value } : {}) },
+    select: USER_SELECT,
   });
 
-  await logActivity({ userId: req.user.id, action: "CREATE", entityType: "User", entityId: user.id, details: { name, email, role } });
+  await logActivity({ userId: req.user.id, action: "CREATE", entityType: "User", entityId: user.id, details: { name, email, role, ...(perms.value ? { permissions: perms.value } : {}) } });
 
-  res.status(201).json(user);
+  res.status(201).json(serialize(user));
 });
 
 const updateSchema = z.object({
@@ -61,6 +94,7 @@ const updateSchema = z.object({
   role: z.enum(["ADMIN", "STAFF", "DRIVER"]).optional(),
   active: z.boolean().optional(),
   password: z.string().min(6).optional(),
+  permissions: z.array(z.string()).nullable().optional(),
 });
 
 router.patch("/:id", async (req, res) => {
@@ -83,21 +117,40 @@ router.patch("/:id", async (req, res) => {
     return res.status(403).json({ error: "Driver accounts aren't included in your plan" });
   }
 
+  const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+  if (!target) return res.status(404).json({ error: "User not found" });
+
   const data = { ...parsed.data };
   if (data.password) {
     data.passwordHash = await bcrypt.hash(data.password, 10);
     delete data.password;
   }
 
-  const user = await prisma.user.update({
-    where: { id: req.params.id },
-    data,
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+  // Custom permissions only exist for staff; changing someone's role starts them from that role's defaults
+  const newRole = parsed.data.role || target.role;
+  let permissionsLogged;
+  if (parsed.data.permissions !== undefined) {
+    const perms = parsePermissions(parsed.data.permissions);
+    if (perms.error) return res.status(400).json({ error: perms.error });
+    if (perms.value && newRole !== "STAFF") return res.status(400).json({ error: "Custom permissions apply to staff accounts only" });
+    data.permissions = perms.value === null ? Prisma.DbNull : perms.value;
+    permissionsLogged = perms.value === null ? "role defaults" : perms.value;
+  } else if (parsed.data.role && parsed.data.role !== target.role) {
+    data.permissions = Prisma.DbNull;
+  }
+
+  const user = await prisma.user.update({ where: { id: req.params.id }, data, select: USER_SELECT });
+
+  const { permissions: _ignored, password: _pw, ...rest } = parsed.data;
+  await logActivity({
+    userId: req.user.id,
+    action: "UPDATE",
+    entityType: "User",
+    entityId: user.id,
+    details: { ...rest, ...(permissionsLogged !== undefined ? { permissions: permissionsLogged } : {}), ...(parsed.data.password ? { passwordChanged: true } : {}) },
   });
 
-  await logActivity({ userId: req.user.id, action: "UPDATE", entityType: "User", entityId: user.id, details: parsed.data });
-
-  res.json(user);
+  res.json(serialize(user));
 });
 
 router.delete("/:id", async (req, res) => {

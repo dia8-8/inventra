@@ -1,13 +1,13 @@
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
 router.use(requireAuth);
 
-router.get("/movements", async (req, res) => {
+router.get("/movements", requirePermission("inventory.view"), async (req, res) => {
   const { productId } = req.query;
   const movements = await prisma.stockMovement.findMany({
     where: productId ? { productId: String(productId) } : {},
@@ -32,7 +32,7 @@ const movementSchema = z.object({
 });
 
 // Records incoming stock, adjustments, or waste. Outgoing stock from orders is handled in orders.js.
-router.post("/movements", requireRole("ADMIN", "STAFF"), async (req, res) => {
+router.post("/movements", requirePermission("inventory.adjust"), async (req, res) => {
   const parsed = movementSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const { productId, type, quantity, reason, supplierId } = parsed.data;

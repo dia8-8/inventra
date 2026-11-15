@@ -1,13 +1,13 @@
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
 router.use(requireAuth);
 
-router.get("/", async (req, res) => {
+router.get("/", requirePermission("expenses.view"), async (req, res) => {
   const { category, from, to } = req.query;
   const where = {};
   if (category) where.category = String(category);
@@ -33,7 +33,7 @@ const expenseSchema = z.object({
   note: z.string().optional().nullable(),
 });
 
-router.post("/", requireRole("ADMIN", "STAFF"), async (req, res) => {
+router.post("/", requirePermission("expenses.create"), async (req, res) => {
   const parsed = expenseSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
@@ -45,7 +45,7 @@ router.post("/", requireRole("ADMIN", "STAFF"), async (req, res) => {
   res.status(201).json(expense);
 });
 
-router.patch("/:id", requireRole("ADMIN", "STAFF"), async (req, res) => {
+router.patch("/:id", requirePermission("expenses.edit"), async (req, res) => {
   const parsed = expenseSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
@@ -58,7 +58,7 @@ router.patch("/:id", requireRole("ADMIN", "STAFF"), async (req, res) => {
   res.json(expense);
 });
 
-router.delete("/:id", requireRole("ADMIN"), async (req, res) => {
+router.delete("/:id", requirePermission("expenses.delete"), async (req, res) => {
   await prisma.expense.delete({ where: { id: req.params.id } });
   await logActivity({ userId: req.user.id, action: "DELETE", entityType: "Expense", entityId: req.params.id });
   res.status(204).end();

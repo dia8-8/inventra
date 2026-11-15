@@ -61,6 +61,8 @@ model User {
   passwordHash String
   role         Role     @default(STAFF)
   active       Boolean  @default(true)
+  // Custom permissions picked by an admin (a list of keys, see lib/permissions.js); null = the role's defaults
+  permissions  Json?
   // Set when the password is reset; sessions issued before this moment stop working
   passwordChangedAt DateTime?
   createdAt    DateTime @default(now())

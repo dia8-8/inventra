@@ -20,7 +20,7 @@ const emptyForm = { date: todayStr(), category: "FUEL", amount: "", note: "" };
 
 export default function Expenses() {
   const notify = useNotify();
-  const { user } = useAuth();
+  const { can } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [category, setCategory] = useState("");
   const [from, setFrom] = useState("");
@@ -103,9 +103,11 @@ export default function Expenses() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Expenses</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{expenses.length} entries · {money(total)} total</p>
         </div>
-        <button onClick={openNew} className="btn-primary">
-          + Add Expense
-        </button>
+        {can("expenses.create") && (
+          <button onClick={openNew} className="btn-primary">
+            + Add Expense
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -153,10 +155,12 @@ export default function Expenses() {
               </div>
               <div className="font-semibold text-sm shrink-0 dark:text-gray-100">{money(e.amount)}</div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => openEdit(e)} className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1">
-                  Edit
-                </button>
-                {user?.role === "ADMIN" && (
+                {can("expenses.edit") && (
+                  <button onClick={() => openEdit(e)} className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1">
+                    Edit
+                  </button>
+                )}
+                {can("expenses.delete") && (
                   <button onClick={() => handleDelete(e)} className="btn-ghost btn-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                     Delete
                   </button>

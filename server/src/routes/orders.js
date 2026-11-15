@@ -1,14 +1,14 @@
 const express = require("express");
 const { z } = require("zod");
 const prisma = require("../lib/prisma");
-const { requireAuth, requireRole, requireFeature } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission, requireFeature } = require("../middleware/auth");
 const { getTenantSettings } = require("../lib/settings");
 const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
 router.use(requireAuth);
 
-router.get("/drivers", requireRole("ADMIN", "STAFF"), requireFeature("deliveries"), async (req, res) => {
+router.get("/drivers", requirePermission("deliveries.assign"), requireFeature("deliveries"), async (req, res) => {
   const drivers = await prisma.user.findMany({
     where: { role: "DRIVER", active: true },
     select: { id: true, name: true },
@@ -37,7 +37,7 @@ function buildOrderWhere(req, { includeStatus = true, includePayment = true } = 
   return where;
 }
 
-router.get("/status-counts", async (req, res) => {
+router.get("/status-counts", requireAnyPermission("orders.view", "deliveries.view"), async (req, res) => {
   const statusWhere = buildOrderWhere(req, { includeStatus: false, includePayment: true });
   const grouped = await prisma.order.groupBy({ by: ["status"], where: statusWhere, _count: { _all: true } });
   const counts = {};
@@ -57,7 +57,7 @@ router.get("/status-counts", async (req, res) => {
   res.json({ counts, total, paymentCounts });
 });
 
-router.get("/", async (req, res) => {
+router.get("/", requireAnyPermission("orders.view", "deliveries.view"), async (req, res) => {
   const { limit, offset } = req.query;
   const where = buildOrderWhere(req, { includeStatus: true });
   const orders = await prisma.order.findMany({
@@ -69,7 +69,7 @@ router.get("/", async (req, res) => {
   res.json(orders);
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAnyPermission("orders.view", "deliveries.view"), async (req, res) => {
   const order = await prisma.order.findUnique({
     where: { id: req.params.id },
     include: {
@@ -106,7 +106,7 @@ const createSchema = z.object({
 // Stock is deducted immediately when an order is created (not cancelled), since a small
 // distributor needs to prevent overselling against on-hand inventory rather than only
 // at delivery time. Cancelling an order restocks it.
-router.post("/", async (req, res) => {
+router.post("/", requirePermission("orders.create"), async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const { customerId, items, discount, deliveryFee, notes } = parsed.data;
@@ -182,7 +182,7 @@ router.post("/", async (req, res) => {
 
 // Only PENDING orders can be edited: once an order moves to PREPARING or beyond, staff are
 // acting on the original items, so changing them silently could hide the actual work in progress.
-router.patch("/:id", requireRole("ADMIN", "STAFF"), async (req, res) => {
+router.patch("/:id", requirePermission("orders.edit"), async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const { customerId, items, discount, deliveryFee, notes } = parsed.data;
@@ -275,7 +275,7 @@ const statusSchema = z.object({
   deliveryNotes: z.string().optional().nullable(),
 });
 
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", requirePermission("orders.status"), async (req, res) => {
   const parsed = statusSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const { status, deliveryNotes } = parsed.data;
@@ -321,7 +321,7 @@ router.patch("/:id/status", async (req, res) => {
 
 // Permanently removes an order. Stock is returned for orders that still hold it (anything not
 // delivered or cancelled); delivered goods have left the building and cancelled orders were already restocked.
-router.delete("/:id", requireRole("ADMIN"), async (req, res) => {
+router.delete("/:id", requirePermission("orders.delete"), async (req, res) => {
   const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: { items: true } });
   if (!order) return res.status(404).json({ error: "Order not found" });
 
@@ -360,7 +360,7 @@ const assignDriverSchema = z.object({
   assignedDriverId: z.string().nullable(),
 });
 
-router.patch("/:id/assign-driver", requireRole("ADMIN", "STAFF"), requireFeature("deliveries"), async (req, res) => {
+router.patch("/:id/assign-driver", requirePermission("deliveries.assign"), requireFeature("deliveries"), async (req, res) => {
   const parsed = assignDriverSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   const { assignedDriverId } = parsed.data;
@@ -390,7 +390,7 @@ const paymentSchema = z.object({
   note: z.string().optional().nullable(),
 });
 
-router.post("/:id/payments", requireRole("ADMIN", "STAFF"), async (req, res) => {
+router.post("/:id/payments", requirePermission("orders.payments"), async (req, res) => {
   const parsed = paymentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 

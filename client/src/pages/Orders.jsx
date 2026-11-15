@@ -30,8 +30,7 @@ const STATUS_COLORS = {
 
 export default function Orders() {
   const notify = useNotify();
-  const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const { can } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [statusCounts, setStatusCounts] = useState({});
@@ -54,11 +53,15 @@ export default function Orders() {
   const statusFilter = searchParams.get("status") || "";
   const paymentFilter = searchParams.get("paymentStatus") || "";
 
+  // The customer and product lists are only needed by the new/edit order form
   useEffect(() => {
-    Promise.all([api.get("/customers"), api.get("/products")]).then(([c, p]) => {
-      setCustomers(c.data);
-      setProducts(p.data.filter((pr) => pr.active));
-    });
+    if (!can("orders.create") && !can("orders.edit")) return;
+    Promise.all([api.get("/customers"), api.get("/products")])
+      .then(([c, p]) => {
+        setCustomers(c.data);
+        setProducts(p.data.filter((pr) => pr.active));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -165,9 +168,11 @@ export default function Orders() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Orders</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{totalForFilter} total</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="btn-primary">
-          + New Order
-        </button>
+        {can("orders.create") && (
+          <button onClick={() => setShowNew(true)} className="btn-primary">
+            + New Order
+          </button>
+        )}
       </div>
 
       <input
@@ -226,7 +231,7 @@ export default function Orders() {
 
               <div className="mt-3 flex items-center gap-2 flex-wrap">
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[o.status]}`}>{STATUS_LABELS[o.status]}</span>
-                {o.status !== "CANCELLED" && o.status !== "DELIVERED" && (
+                {can("orders.status") && o.status !== "CANCELLED" && o.status !== "DELIVERED" && (
                   <select
                     value={o.status}
                     onChange={(e) => handleStatusChange(o, e.target.value)}
@@ -239,17 +244,17 @@ export default function Orders() {
                     ))}
                   </select>
                 )}
-                {o.status !== "CANCELLED" && o.paymentStatus !== "PAID" && (
+                {can("orders.payments") && o.status !== "CANCELLED" && o.paymentStatus !== "PAID" && (
                   <button onClick={() => openPayment(o)} className="btn-soft btn-sm">
                     Record Payment
                   </button>
                 )}
-                {o.status === "PENDING" && (
+                {can("orders.edit") && o.status === "PENDING" && (
                   <button onClick={() => setEditingOrder(o)} className="btn-secondary btn-sm">
                     Edit
                   </button>
                 )}
-                {isAdmin && (
+                {can("orders.delete") && (
                   <button
                     onClick={() => handleDelete(o)}
                     className="btn-danger btn-sm"
@@ -416,6 +421,7 @@ function FilterChip({ active, onClick, children }) {
 
 function NewOrderModal({ customers, products, order, onClose, onCreated }) {
   const notify = useNotify();
+  const { can } = useAuth();
   const isEditing = !!order;
   const [customerId, setCustomerId] = useState(order?.customerId || "");
   const [customerPrices, setCustomerPrices] = useState(new Map());
@@ -585,7 +591,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
                       {hasCustomerPrice && !isCustomized && (
                         <span className="text-[10px] text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 rounded-full px-2 py-0.5 shrink-0">customer price</span>
                       )}
-                      {isCustomized && (
+                      {isCustomized && can("customers.edit") && (
                         <button
                           type="button"
                           onClick={() => saveCustomerPrice(i)}

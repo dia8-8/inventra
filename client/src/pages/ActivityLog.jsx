@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 
@@ -26,6 +27,7 @@ function formatDetails(details) {
 
 export default function ActivityLog() {
   const notify = useNotify();
+  const { can } = useAuth();
   const [logs, setLogs] = useState([]);
   const [total, setTotal] = useState(0);
   const [entityType, setEntityType] = useState("");
@@ -109,7 +111,7 @@ export default function ActivityLog() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Activity Log</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{total} entries</p>
         </div>
-        {total > 0 && (
+        {total > 0 && can("activity.delete") && (
           <button
             onClick={deleteMatching}
             className="btn-danger"
@@ -174,16 +176,18 @@ export default function ActivityLog() {
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-xs text-gray-400 dark:text-gray-500">{new Date(l.createdAt).toLocaleString()}</div>
-                <button
-                  onClick={() => deleteOne(l)}
-                  aria-label="Delete this log entry"
-                  title="Delete this entry"
-                  className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3" />
-                  </svg>
-                </button>
+                {can("activity.delete") && (
+                  <button
+                    onClick={() => deleteOne(l)}
+                    aria-label="Delete this log entry"
+                    title="Delete this entry"
+                    className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           ))}

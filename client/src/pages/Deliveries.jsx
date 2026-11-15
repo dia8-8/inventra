@@ -151,13 +151,15 @@ function DriverView() {
 
 function DispatchView() {
   const notify = useNotify();
+  const { can } = useAuth();
+  const canAssign = can("deliveries.assign");
   const [orders, setOrders] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   function load() {
     setLoading(true);
-    Promise.all([api.get("/orders"), api.get("/orders/drivers")])
+    Promise.all([api.get("/orders"), canAssign ? api.get("/orders/drivers") : Promise.resolve({ data: [] })])
       .then(([o, d]) => {
         setOrders(o.data.filter((ord) => ord.status !== "DELIVERED" && ord.status !== "CANCELLED"));
         setDrivers(d.data);
@@ -204,18 +206,22 @@ function DispatchView() {
 
               <div className="mt-3 flex items-center gap-2 flex-wrap">
                 <label className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Driver</label>
-                <select
-                  value={o.assignedDriverId || ""}
-                  onChange={(e) => assignDriver(o, e.target.value)}
-                  className="input text-xs px-2 py-1.5"
-                >
-                  <option value="">— Unassigned —</option>
-                  {drivers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
+                {canAssign ? (
+                  <select
+                    value={o.assignedDriverId || ""}
+                    onChange={(e) => assignDriver(o, e.target.value)}
+                    className="input text-xs px-2 py-1.5"
+                  >
+                    <option value="">— Unassigned —</option>
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-sm dark:text-gray-200">{o.assignedDriver?.name || "Unassigned"}</span>
+                )}
               </div>
 
               {o.deliveryNotes && <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">{o.deliveryNotes}</div>}

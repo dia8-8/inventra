@@ -2,7 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { NotifyProvider } from "./context/NotifyContext";
-import { ProtectedRoute, AdminRoute, RoleRoute, FeatureRoute } from "./components/ProtectedRoute";
+import { ProtectedRoute, AdminRoute, RoleRoute, PermissionRoute, FeatureRoute } from "./components/ProtectedRoute";
+import { firstAllowedPath } from "./lib/access";
+import { EmptyState } from "./components/ui";
+import { LockIcon } from "./components/icons";
 import Layout from "./components/Layout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -45,13 +48,19 @@ function AppShell() {
 }
 
 function HomeRoute() {
-  const { user } = useAuth();
+  const { user, can, hasFeature } = useAuth();
   if (user?.role === "SUPER_ADMIN") return <Navigate to="/platform" replace />;
   if (user?.role === "DRIVER") return <Navigate to="/deliveries" replace />;
-  return <Dashboard />;
+  if (can("dashboard.view")) return <Dashboard />;
+  // No dashboard access: send them to the first page they are allowed to use
+  const target = firstAllowedPath(can, hasFeature);
+  if (target) return <Navigate to={target} replace />;
+  return (
+    <div className="card mt-10 max-w-md mx-auto">
+      <EmptyState icon={LockIcon} title="You don't have access to anything yet" text="Ask an administrator of your company to give you permissions." />
+    </div>
+  );
 }
-
-const STAFF = ["ADMIN", "STAFF"];
 
 export default function App() {
   return (
@@ -82,53 +91,53 @@ export default function App() {
                   </RoleRoute>
                 }
               />
-              <Route path="/customers" element={<RoleRoute roles={STAFF}><Customers /></RoleRoute>} />
-              <Route path="/products" element={<RoleRoute roles={STAFF}><Products /></RoleRoute>} />
-              <Route path="/inventory" element={<RoleRoute roles={STAFF}><Inventory /></RoleRoute>} />
+              <Route path="/customers" element={<PermissionRoute perm="customers.view"><Customers /></PermissionRoute>} />
+              <Route path="/products" element={<PermissionRoute perm="products.view"><Products /></PermissionRoute>} />
+              <Route path="/inventory" element={<PermissionRoute perm="inventory.view"><Inventory /></PermissionRoute>} />
               <Route
                 path="/scan"
                 element={
-                  <RoleRoute roles={STAFF}>
+                  <PermissionRoute perm="inventory.adjust">
                     <FeatureRoute feature="barcode">
                       <Scan />
                     </FeatureRoute>
-                  </RoleRoute>
+                  </PermissionRoute>
                 }
               />
-              <Route path="/orders" element={<RoleRoute roles={STAFF}><Orders /></RoleRoute>} />
-              <Route path="/suppliers" element={<RoleRoute roles={STAFF}><Suppliers /></RoleRoute>} />
-              <Route path="/expenses" element={<RoleRoute roles={STAFF}><Expenses /></RoleRoute>} />
+              <Route path="/orders" element={<PermissionRoute perm="orders.view"><Orders /></PermissionRoute>} />
+              <Route path="/suppliers" element={<PermissionRoute perm="suppliers.view"><Suppliers /></PermissionRoute>} />
+              <Route path="/expenses" element={<PermissionRoute perm="expenses.view"><Expenses /></PermissionRoute>} />
               <Route
                 path="/deliveries"
                 element={
-                  <RoleRoute roles={["ADMIN", "STAFF", "DRIVER"]}>
+                  <PermissionRoute perm="deliveries.view">
                     <FeatureRoute feature="deliveries">
                       <Deliveries />
                     </FeatureRoute>
-                  </RoleRoute>
+                  </PermissionRoute>
                 }
               />
               <Route
                 path="/reports"
                 element={
-                  <RoleRoute roles={STAFF}>
+                  <PermissionRoute perm="reports.view">
                     <FeatureRoute feature="reports">
                       <Reports />
                     </FeatureRoute>
-                  </RoleRoute>
+                  </PermissionRoute>
                 }
               />
               <Route path="/users" element={<AdminRoute><Users /></AdminRoute>} />
-              <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
-              <Route path="/settings/invoice" element={<AdminRoute><InvoiceDesigner /></AdminRoute>} />
+              <Route path="/settings" element={<PermissionRoute anyOf={["settings.edit", "invoices.design"]}><Settings /></PermissionRoute>} />
+              <Route path="/settings/invoice" element={<PermissionRoute perm="invoices.design"><InvoiceDesigner /></PermissionRoute>} />
               <Route
                 path="/activity-log"
                 element={
-                  <AdminRoute>
+                  <PermissionRoute perm="activity.view">
                     <FeatureRoute feature="activity-log">
                       <ActivityLog />
                     </FeatureRoute>
-                  </AdminRoute>
+                  </PermissionRoute>
                 }
               />
             </Route>

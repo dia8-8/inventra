@@ -1,10 +1,10 @@
 const express = require("express");
 const prisma = require("../lib/prisma");
-const { requireAuth, requireRole, requireFeature } = require("../middleware/auth");
+const { requireAuth, requirePermission, requireAnyPermission, requireFeature } = require("../middleware/auth");
 const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
-router.use(requireAuth, requireFeature("activity-log"), requireRole("ADMIN"));
+router.use(requireAuth, requireFeature("activity-log"));
 
 function buildWhere(query) {
   const { entityType, userId, from, to } = query;
@@ -19,7 +19,7 @@ function buildWhere(query) {
   return where;
 }
 
-router.get("/", async (req, res) => {
+router.get("/", requirePermission("activity.view"), async (req, res) => {
   const { limit, offset } = req.query;
   const where = buildWhere(req.query);
 
@@ -42,7 +42,7 @@ router.get("/", async (req, res) => {
 
 // Deletes every entry matching the same filters the list uses (no filters = the whole log).
 // The deletion itself is recorded afterwards so a cleared log is never silently empty.
-router.delete("/", async (req, res) => {
+router.delete("/", requirePermission("activity.delete"), async (req, res) => {
   const where = buildWhere(req.query);
   const { count } = await prisma.activityLog.deleteMany({ where });
 
@@ -58,7 +58,7 @@ router.delete("/", async (req, res) => {
   res.json({ deleted: count });
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requirePermission("activity.delete"), async (req, res) => {
   const { count } = await prisma.activityLog.deleteMany({ where: { id: req.params.id } });
   if (count === 0) return res.status(404).json({ error: "Log entry not found" });
   res.json({ deleted: 1 });
