@@ -22,6 +22,8 @@ const platformRoutes = require("./routes/platform");
 const { ensureSuperAdmin } = require("./lib/bootstrap");
 
 const app = express();
+// Behind Railway's proxy: use the real client IP (needed for rate limiting)
+app.set("trust proxy", 1);
 
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",").map((o) => o.trim());
 app.use(cors({ origin: allowedOrigins }));

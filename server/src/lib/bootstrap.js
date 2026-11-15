@@ -37,6 +37,13 @@ async function ensureSuperAdmin() {
     return;
   }
 
+  // Once the owner has reset their own password, that choice wins over the env var.
+  if (existing.passwordChangedAt) {
+    if (!existing.active) await prismaRaw.user.update({ where: { id: existing.id }, data: { active: true } });
+    console.log(`Super admin: ${email} is ready (password was reset in the app; ignoring SUPERADMIN_PASSWORD)`);
+    return;
+  }
+
   // The env vars are the source of truth: changing the password there changes the login.
   const passwordMatches = await bcrypt.compare(password, existing.passwordHash);
   if (!passwordMatches || !existing.active) {

@@ -5,7 +5,7 @@ const api = axios.create({
 });
 
 // Pages reachable without being signed in; a 401 there shouldn't bounce to /login
-const PUBLIC_PATHS = ["/", "/login", "/register"];
+const PUBLIC_PATHS = ["/", "/login", "/register", "/forgot-password", "/reset-password"];
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("vc_token");

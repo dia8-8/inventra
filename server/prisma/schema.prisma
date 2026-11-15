@@ -61,9 +61,12 @@ model User {
   passwordHash String
   role         Role     @default(STAFF)
   active       Boolean  @default(true)
+  // Set when the password is reset; sessions issued before this moment stop working
+  passwordChangedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  passwordResetTokens PasswordResetToken[]
   customersCreated Customer[]      @relation("CustomerCreatedBy")
   ordersCreated    Order[]         @relation("OrderCreatedBy")
   stockMovements   StockMovement[] @relation("StockMovementCreatedBy")
@@ -76,6 +79,19 @@ model User {
   tenant   Tenant? @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+}
+
+// One-time password reset links. Only a hash of the token is stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Customer {

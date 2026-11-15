@@ -6,6 +6,8 @@ import { ProtectedRoute, AdminRoute, RoleRoute, FeatureRoute } from "./component
 import Layout from "./components/Layout";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import LicenseBlocked from "./pages/LicenseBlocked";
 import Platform from "./pages/Platform";
 import Dashboard from "./pages/Dashboard";
@@ -60,6 +62,8 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login mode="login" />} />
             <Route path="/register" element={<Login mode="register" />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/orders/:id/invoice"
               element={

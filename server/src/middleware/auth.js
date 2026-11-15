@@ -19,6 +19,11 @@ function buildAuth({ allowBlocked }) {
         return res.status(401).json({ error: "Not authenticated" });
       }
 
+      // Signing in again is required after a password reset
+      if (user.passwordChangedAt && payload.iat * 1000 + 1000 < user.passwordChangedAt.getTime()) {
+        return res.status(401).json({ error: "Invalid or expired session" });
+      }
+
       req.user = user;
 
       // Platform super admins belong to no tenant and are never license-gated.
