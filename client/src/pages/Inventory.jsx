@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
+import { productColor } from "../lib/categoryColor";
 
 const TYPE_LABELS = { IN: "Incoming stock", OUT: "Sale", ADJUSTMENT: "Adjustment", WASTE: "Waste / damaged" };
 
 export default function Inventory() {
+  const notify = useNotify();
   const [products, setProducts] = useState([]);
   const [movements, setMovements] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -38,6 +41,7 @@ export default function Inventory() {
     e.preventDefault();
     try {
       await api.post("/inventory/movements", { productId: modalProduct.id, ...form, supplierId: form.supplierId || null });
+      notify.success(`Stock updated for ${modalProduct.name}`);
       setModalProduct(null);
       load();
     } catch (err) {
@@ -74,7 +78,8 @@ export default function Inventory() {
         {products.map((p) => {
           const low = Number(p.stockQty) <= Number(p.lowStockThreshold);
           return (
-            <div key={p.id} className="p-4 flex items-center gap-3">
+            <div key={p.id} className="relative p-4 pl-5 flex items-center gap-3">
+              <span aria-hidden="true" className={`absolute left-0 inset-y-0 w-1.5 ${productColor(p).dot}`} />
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-sm truncate dark:text-gray-100">{p.name}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{p.category}</div>

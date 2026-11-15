@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { NotifyProvider } from "./context/NotifyContext";
 import { ProtectedRoute, AdminRoute, RoleRoute, FeatureRoute } from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Landing from "./pages/Landing";
@@ -52,6 +53,7 @@ const STAFF = ["ADMIN", "STAFF"];
 export default function App() {
   return (
     <ThemeProvider>
+      <NotifyProvider>
       <BrowserRouter>
         <AuthProvider>
           <Routes>
@@ -127,6 +129,7 @@ export default function App() {
           </Routes>
         </AuthProvider>
       </BrowserRouter>
+      </NotifyProvider>
     </ThemeProvider>
   );
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import { parseVariableWeightCode } from "../lib/variableWeightBarcode";
 
 export default function Settings() {
+  const notify = useNotify();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -37,6 +39,7 @@ export default function Settings() {
       });
       setForm(data);
       setSaved(true);
+      notify.success("Settings saved");
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
     } finally {

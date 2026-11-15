@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 import AddressAutocomplete from "../components/AddressAutocomplete";
 
@@ -10,6 +11,7 @@ function money(n) {
 const emptyForm = { name: "", phone: "", businessName: "", address: "", notes: "" };
 
 export default function Customers() {
+  const notify = useNotify();
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,7 @@ export default function Customers() {
       } else {
         await api.post("/customers", form);
       }
+      notify.success(editing?.id ? "Customer updated" : "Customer added");
       setEditing(null);
       load();
     } catch (err) {
@@ -59,9 +62,20 @@ export default function Customers() {
   }
 
   async function handleDelete(c) {
-    if (!confirm(`Delete customer "${c.name}"? This cannot be undone.`)) return;
-    await api.delete(`/customers/${c.id}`);
-    load();
+    const ok = await notify.confirm({
+      title: "Delete customer?",
+      message: `"${c.name}" will be removed permanently. This cannot be undone.`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/customers/${c.id}`);
+      notify.success(`Deleted ${c.name}`);
+      load();
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't delete the customer"));
+    }
   }
 
   async function openDetail(c) {

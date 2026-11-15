@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 
 const emptyForm = { name: "", contactPerson: "", phone: "", email: "", address: "", notes: "" };
 
 export default function Suppliers() {
+  const notify = useNotify();
   const [suppliers, setSuppliers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -53,6 +55,7 @@ export default function Suppliers() {
       } else {
         await api.post("/suppliers", form);
       }
+      notify.success(editing?.id ? "Supplier updated" : "Supplier added");
       setEditing(null);
       load();
     } catch (err) {
@@ -61,9 +64,20 @@ export default function Suppliers() {
   }
 
   async function handleDelete(s) {
-    if (!confirm(`Delete supplier "${s.name}"? This cannot be undone.`)) return;
-    await api.delete(`/suppliers/${s.id}`);
-    load();
+    const ok = await notify.confirm({
+      title: "Delete supplier?",
+      message: `"${s.name}" will be removed permanently. Products and stock entries that used it keep their history without a supplier.`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/suppliers/${s.id}`);
+      notify.success(`Deleted ${s.name}`);
+      load();
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't delete the supplier"));
+    }
   }
 
   async function openDetail(s) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import { useAuth } from "../context/AuthContext";
 
 function money(n) {
@@ -28,6 +29,7 @@ export default function Deliveries() {
 }
 
 function DriverView() {
+  const notify = useNotify();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState({});
@@ -52,12 +54,22 @@ function DriverView() {
   useEffect(load, []);
 
   async function advance(order, status) {
-    await api.patch(`/orders/${order.id}/status`, { status, deliveryNotes: notes[order.id] || "" });
+    try {
+      await api.patch(`/orders/${order.id}/status`, { status, deliveryNotes: notes[order.id] || "" });
+      notify.success(status === "DELIVERED" ? `${order.orderNumber} marked delivered` : `${order.orderNumber} is out for delivery`);
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't update the delivery"));
+    }
     load();
   }
 
   async function saveNotes(order) {
-    await api.patch(`/orders/${order.id}/status`, { status: order.status, deliveryNotes: notes[order.id] || "" });
+    try {
+      await api.patch(`/orders/${order.id}/status`, { status: order.status, deliveryNotes: notes[order.id] || "" });
+      notify.success("Delivery notes saved");
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't save the notes"));
+    }
     load();
   }
 
@@ -137,6 +149,7 @@ function DriverView() {
 }
 
 function DispatchView() {
+  const notify = useNotify();
   const [orders, setOrders] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +167,12 @@ function DispatchView() {
   useEffect(load, []);
 
   async function assignDriver(order, assignedDriverId) {
-    await api.patch(`/orders/${order.id}/assign-driver`, { assignedDriverId: assignedDriverId || null });
+    try {
+      await api.patch(`/orders/${order.id}/assign-driver`, { assignedDriverId: assignedDriverId || null });
+      notify.success(assignedDriverId ? `Driver assigned to ${order.orderNumber}` : `Driver removed from ${order.orderNumber}`);
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't assign the driver"));
+    }
     load();
   }
 

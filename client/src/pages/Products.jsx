@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
+import { useAuth } from "../context/AuthContext";
+import { COLOR_OPTIONS, COLOR_KEYS, productColor } from "../lib/categoryColor";
 import Modal from "../components/Modal";
 
 const UNITS = ["KG", "BOX", "PIECE", "BAG", "CARTON"];
@@ -8,10 +11,13 @@ function money(n) {
   return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(n || 0);
 }
 
-const emptyForm = { name: "", category: "", unit: "KG", costPrice: "", sellingPrice: "", stockQty: "", lowStockThreshold: "10", supplierId: "", barcode: "" };
+const emptyForm = { name: "", category: "", unit: "KG", costPrice: "", sellingPrice: "", stockQty: "", lowStockThreshold: "10", supplierId: "", barcode: "", color: "" };
 const PAGE_SIZE = 12;
 
 export default function Products() {
+  const notify = useNotify();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
   const [suppliers, setSuppliers] = useState([]);
@@ -64,6 +70,7 @@ export default function Products() {
       lowStockThreshold: p.lowStockThreshold,
       supplierId: p.supplierId || "",
       barcode: p.barcode || "",
+      color: p.color || "",
     });
     setError("");
     setEditing(p);
@@ -72,12 +79,13 @@ export default function Products() {
   async function handleSubmit(e) {
     e.preventDefault();
     try {
-      const payload = { ...form, supplierId: form.supplierId || null };
+      const payload = { ...form, supplierId: form.supplierId || null, color: form.color || null };
       if (editing?.id) {
         await api.patch(`/products/${editing.id}`, payload);
       } else {
         await api.post("/products", payload);
       }
+      notify.success(editing?.id ? "Product updated" : "Product added");
       setEditing(null);
       load();
     } catch (err) {
@@ -86,9 +94,20 @@ export default function Products() {
   }
 
   async function handleDelete(p) {
-    if (!confirm(`Delete product "${p.name}"?`)) return;
-    await api.delete(`/products/${p.id}`);
-    load();
+    const ok = await notify.confirm({
+      title: "Delete product?",
+      message: `"${p.name}" will be removed from your product list. If it already appears in orders or stock history it is archived instead, so those records stay intact.`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      const { data } = await api.delete(`/products/${p.id}`);
+      notify.success(data?.archived ? `${p.name} archived (it has order or stock history)` : `Deleted ${p.name}`);
+      load();
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't delete the product"));
+    }
   }
 
   return (
@@ -118,16 +137,15 @@ export default function Products() {
           {products.map((p) => {
             const low = Number(p.stockQty) <= Number(p.lowStockThreshold);
             return (
-              <div key={p.id} className="p-4 flex items-center gap-4 flex-wrap">
+              <div key={p.id} className="relative p-4 pl-5 flex items-center gap-4 flex-wrap">
+                <span aria-hidden="true" className={`absolute left-0 inset-y-0 w-1.5 ${productColor(p).dot}`} />
                 <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium text-sm break-words dark:text-gray-100">{p.name}</div>
                     {low && <span className="text-[10px] font-semibold bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full shrink-0">LOW STOCK</span>}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
-                    {p.category}
-                    {p.supplier ? ` · ${p.supplier.name}` : ""}
-                    {p.barcode ? ` · #${p.barcode}` : ""}
+                    {[p.category, p.supplier?.name, p.barcode ? `#${p.barcode}` : null].filter(Boolean).join(" · ")}
                   </div>
                 </div>
                 <div className="hidden sm:block text-right w-20 shrink-0">
@@ -148,9 +166,11 @@ export default function Products() {
                   <button onClick={() => openEdit(p)} className="text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700">
                     Edit
                   </button>
-                  <button onClick={() => handleDelete(p)} className="text-xs font-medium text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-900/20">
-                    Delete
-                  </button>
+                  {isAdmin && (
+                    <button onClick={() => handleDelete(p)} className="text-xs font-medium text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-900/20">
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -213,6 +233,35 @@ export default function Products() {
                 disabled={!!editing?.id}
               />
               <Field label="Low stock alert at" type="number" value={form.lowStockThreshold} onChange={(v) => setForm({ ...form, lowStockThreshold: v })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Label color</label>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, color: "" })}
+                  aria-pressed={!form.color}
+                  className={`text-xs rounded-full px-3 py-1.5 border ${
+                    !form.color ? "border-brand-500 text-brand-600 dark:text-brand-300 font-medium" : "border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400"
+                  }`}
+                >
+                  Auto
+                </button>
+                {COLOR_KEYS.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    title={key}
+                    aria-label={key}
+                    aria-pressed={form.color === key}
+                    onClick={() => setForm({ ...form, color: key })}
+                    className={`h-7 w-7 rounded-full ${COLOR_OPTIONS[key].dot} ring-offset-2 ring-offset-white dark:ring-offset-gray-800 ${
+                      form.color === key ? "ring-2 ring-gray-900 dark:ring-white" : "hover:scale-110"
+                    } transition`}
+                  />
+                ))}
+              </div>
+              {!form.color && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Auto picks a color from the category.</p>}
             </div>
             <Field label="Barcode" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan or type a barcode…" />
             <div>

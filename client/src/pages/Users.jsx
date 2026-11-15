@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 
@@ -7,6 +8,7 @@ const ROLES = ["ADMIN", "STAFF", "DRIVER"];
 
 export default function Users() {
   const { user: me, license, hasFeature } = useAuth();
+  const notify = useNotify();
   const canAssignDrivers = hasFeature("deliveries");
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ export default function Users() {
     setError("");
     try {
       await api.post("/users", form);
+      notify.success(`${form.name} added`);
       setShowNew(false);
       setForm({ name: "", email: "", password: "", role: "STAFF" });
       load();
@@ -38,22 +41,39 @@ export default function Users() {
   }
 
   async function toggleActive(u) {
-    await api.patch(`/users/${u.id}`, { active: !u.active });
-    load();
+    try {
+      await api.patch(`/users/${u.id}`, { active: !u.active });
+      notify.success(`${u.name} ${u.active ? "deactivated" : "activated"}`);
+      load();
+    } catch (err) {
+      notify.error(errorMessage(err));
+    }
   }
 
   async function changeRole(u, role) {
-    await api.patch(`/users/${u.id}`, { role });
-    load();
+    try {
+      await api.patch(`/users/${u.id}`, { role });
+      notify.success(`${u.name} is now ${role.toLowerCase()}`);
+      load();
+    } catch (err) {
+      notify.error(errorMessage(err));
+    }
   }
 
   async function handleDelete(u) {
-    if (!confirm(`Delete user "${u.name}"? This cannot be undone.`)) return;
+    const ok = await notify.confirm({
+      title: "Delete user?",
+      message: `${u.name} (${u.email}) will lose access immediately. This cannot be undone.`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/users/${u.id}`);
+      notify.success(`Deleted ${u.name}`);
       load();
     } catch (err) {
-      alert(err.response?.data?.error || "Something went wrong");
+      notify.error(errorMessage(err, "Couldn't delete the user"));
     }
   }
 

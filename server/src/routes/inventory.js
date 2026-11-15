@@ -38,7 +38,7 @@ router.post("/movements", requireRole("ADMIN", "STAFF"), async (req, res) => {
   const { productId, type, quantity, reason, supplierId } = parsed.data;
 
   const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product) return res.status(404).json({ error: "Product not found" });
+  if (!product || !product.active) return res.status(404).json({ error: "Product not found" });
   if (supplierId && !(await prisma.supplier.findUnique({ where: { id: supplierId } }))) {
     return res.status(400).json({ error: "Supplier not found" });
   }

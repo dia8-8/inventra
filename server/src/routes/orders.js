@@ -120,7 +120,7 @@ router.post("/", async (req, res) => {
 
   for (const item of items) {
     const product = productMap.get(item.productId);
-    if (!product) return res.status(404).json({ error: `Product ${item.productId} not found` });
+    if (!product || !product.active) return res.status(404).json({ error: `Product ${item.productId} not found` });
     if (Number(product.stockQty) < item.quantity) {
       return res.status(400).json({ error: `Insufficient stock for ${product.name} (have ${product.stockQty}, need ${item.quantity})` });
     }
@@ -317,6 +317,43 @@ router.patch("/:id/status", async (req, res) => {
 
   await logActivity({ userId: req.user.id, action: "UPDATE", entityType: "Order", entityId: order.id, details: { status } });
   res.json(updated);
+});
+
+// Permanently removes an order. Stock is returned for orders that still hold it (anything not
+// delivered or cancelled); delivered goods have left the building and cancelled orders were already restocked.
+router.delete("/:id", requireRole("ADMIN"), async (req, res) => {
+  const order = await prisma.order.findUnique({ where: { id: req.params.id }, include: { items: true } });
+  if (!order) return res.status(404).json({ error: "Order not found" });
+
+  const holdsStock = !["DELIVERED", "CANCELLED"].includes(order.status);
+
+  await prisma.$transaction(async (tx) => {
+    if (holdsStock) {
+      for (const item of order.items) {
+        await tx.product.update({ where: { id: item.productId }, data: { stockQty: { increment: Number(item.quantity) } } });
+        await tx.stockMovement.create({
+          data: {
+            productId: item.productId,
+            type: "ADJUSTMENT",
+            quantity: Number(item.quantity),
+            reason: `Order ${order.orderNumber} deleted (restock)`,
+            createdById: req.user.id,
+          },
+        });
+      }
+    }
+    // OrderItems and Payments cascade; remaining stock movements keep their history with orderId set to null
+    await tx.order.delete({ where: { id: order.id } });
+  });
+
+  await logActivity({
+    userId: req.user.id,
+    action: "DELETE",
+    entityType: "Order",
+    entityId: order.id,
+    details: { orderNumber: order.orderNumber, status: order.status, total: Number(order.total), restocked: holdsStock },
+  });
+  res.json({ deleted: true, restocked: holdsStock });
 });
 
 const assignDriverSchema = z.object({

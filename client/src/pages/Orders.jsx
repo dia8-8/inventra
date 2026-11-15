@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api/client";
 import Modal from "../components/Modal";
+import { useAuth } from "../context/AuthContext";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 
 const PAGE_SIZE = 10;
 
@@ -26,6 +28,9 @@ const STATUS_COLORS = {
 };
 
 export default function Orders() {
+  const notify = useNotify();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [statusCounts, setStatusCounts] = useState({});
@@ -91,8 +96,37 @@ export default function Orders() {
   const unpaidCount = (paymentCounts.UNPAID || 0) + (paymentCounts.PARTIAL || 0);
 
   async function handleStatusChange(order, status) {
-    await api.patch(`/orders/${order.id}/status`, { status });
+    try {
+      await api.patch(`/orders/${order.id}/status`, { status });
+      notify.success(`${order.orderNumber} marked ${STATUS_LABELS[status].toLowerCase()}`);
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't update the order"));
+    }
     load();
+  }
+
+  async function handleDelete(order) {
+    const holdsStock = order.status !== "DELIVERED" && order.status !== "CANCELLED";
+    const ok = await notify.confirm({
+      title: `Delete order ${order.orderNumber}?`,
+      message: [
+        "The order, its items and its payment records will be removed permanently. This cannot be undone.",
+        holdsStock ? "The reserved stock will be returned to inventory." : "Stock levels will not change.",
+        Number(order.amountPaid) > 0 ? `${money(order.amountPaid)} of recorded payments will be deleted with it.` : null,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      confirmText: "Delete order",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      const { data } = await api.delete(`/orders/${order.id}`);
+      notify.success(data?.restocked ? `${order.orderNumber} deleted and stock returned` : `${order.orderNumber} deleted`);
+      load();
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't delete the order"));
+    }
   }
 
   async function openPayment(order) {
@@ -114,6 +148,7 @@ export default function Orders() {
       setPayingOrder(data);
       setPaymentAmount("");
       setPaymentNote("");
+      notify.success(`Payment of ${money(Number(paymentAmount))} recorded`);
       load();
     } catch (err) {
       setPaymentError(err.response?.data?.error || "Something went wrong");
@@ -213,6 +248,14 @@ export default function Orders() {
                     Edit
                   </button>
                 )}
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDelete(o)}
+                    className="text-xs font-medium text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg px-3 py-1 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    Delete
+                  </button>
+                )}
                 <a
                   href={`/orders/${o.id}/invoice`}
                   target="_blank"
@@ -271,6 +314,7 @@ export default function Orders() {
             setEditingOrder(null);
           }}
           onCreated={() => {
+            notify.success(editingOrder ? "Order updated" : "Order created");
             setShowNew(false);
             setEditingOrder(null);
             load();
@@ -370,6 +414,7 @@ function FilterChip({ active, onClick, children }) {
 }
 
 function NewOrderModal({ customers, products, order, onClose, onCreated }) {
+  const notify = useNotify();
   const isEditing = !!order;
   const [customerId, setCustomerId] = useState(order?.customerId || "");
   const [customerPrices, setCustomerPrices] = useState(new Map());
@@ -430,6 +475,9 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
     try {
       await api.put(`/customers/${customerId}/prices/${line.productId}`, { unitPrice: Number(line.unitPrice) });
       setCustomerPrices((prev) => new Map(prev).set(line.productId, Number(line.unitPrice)));
+      notify.success("Customer price saved");
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't save the price"));
     } finally {
       setSavingPrice(null);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 
@@ -17,6 +18,7 @@ function todayStr() {
 const emptyForm = { date: todayStr(), category: "FUEL", amount: "", note: "" };
 
 export default function Expenses() {
+  const notify = useNotify();
   const { user } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [category, setCategory] = useState("");
@@ -66,6 +68,7 @@ export default function Expenses() {
       } else {
         await api.post("/expenses", form);
       }
+      notify.success(editing?.id ? "Expense updated" : "Expense added");
       setEditing(null);
       load();
     } catch (err) {
@@ -74,9 +77,20 @@ export default function Expenses() {
   }
 
   async function handleDelete(e) {
-    if (!confirm(`Delete this ${CATEGORY_LABELS[e.category]} expense of ${money(e.amount)}?`)) return;
-    await api.delete(`/expenses/${e.id}`);
-    load();
+    const ok = await notify.confirm({
+      title: "Delete expense?",
+      message: `The ${CATEGORY_LABELS[e.category]} expense of ${money(e.amount)} will be removed permanently.`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/expenses/${e.id}`);
+      notify.success("Expense deleted");
+      load();
+    } catch (err) {
+      notify.error(errorMessage(err, "Couldn't delete the expense"));
+    }
   }
 
   const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);

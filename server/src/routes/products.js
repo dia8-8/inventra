@@ -11,6 +11,7 @@ function buildProductWhere(req) {
   const { search, category } = req.query;
   return {
     AND: [
+      { active: true }, // archived products stay out of every list
       search
         ? {
             OR: [
@@ -31,7 +32,7 @@ router.get("/count", async (req, res) => {
 
 router.get("/by-barcode/:code", requireFeature("barcode"), async (req, res) => {
   const product = await prisma.product.findFirst({
-    where: { barcode: req.params.code },
+    where: { barcode: req.params.code, active: true },
     include: { supplier: { select: { id: true, name: true } } },
   });
   if (!product) return res.status(404).json({ error: "No product with that barcode" });
@@ -56,6 +57,8 @@ router.get("/", async (req, res) => {
   res.json(products);
 });
 
+const COLORS = ["red", "orange", "amber", "lime", "emerald", "teal", "sky", "indigo", "violet", "pink"];
+
 const productSchema = z.object({
   name: z.string().min(1),
   category: z.string().min(1),
@@ -65,6 +68,12 @@ const productSchema = z.object({
   stockQty: z.coerce.number().nonnegative().optional(),
   lowStockThreshold: z.coerce.number().nonnegative().optional(),
   active: z.boolean().optional(),
+  color: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((v) => v || null)
+    .refine((v) => v === null || COLORS.includes(v), { message: "Unknown color" }),
   supplierId: z.string().optional().nullable(),
   barcode: z
     .string()
@@ -110,10 +119,28 @@ router.patch("/:id", requireRole("ADMIN", "STAFF"), async (req, res) => {
   }
 });
 
+// A product that appears in orders or stock history can't be removed without breaking those
+// records, so it is archived instead (hidden everywhere, history intact). One that was never
+// used is deleted for real.
 router.delete("/:id", requireRole("ADMIN"), async (req, res) => {
-  await prisma.product.delete({ where: { id: req.params.id } });
-  await logActivity({ userId: req.user.id, action: "DELETE", entityType: "Product", entityId: req.params.id });
-  res.status(204).end();
+  const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+  if (!product || !product.active) return res.status(404).json({ error: "Product not found" });
+
+  const [orderItems, movements] = await Promise.all([
+    prisma.orderItem.count({ where: { productId: product.id } }),
+    prisma.stockMovement.count({ where: { productId: product.id } }),
+  ]);
+
+  if (orderItems === 0 && movements === 0) {
+    await prisma.product.delete({ where: { id: product.id } });
+    await logActivity({ userId: req.user.id, action: "DELETE", entityType: "Product", entityId: product.id, details: { name: product.name } });
+    return res.json({ deleted: true, archived: false });
+  }
+
+  // Free the barcode so it can be reused on a new product
+  await prisma.product.update({ where: { id: product.id }, data: { active: false, barcode: null } });
+  await logActivity({ userId: req.user.id, action: "DELETE", entityType: "Product", entityId: product.id, details: { name: product.name, archived: true } });
+  res.json({ deleted: true, archived: true });
 });
 
 module.exports = router;

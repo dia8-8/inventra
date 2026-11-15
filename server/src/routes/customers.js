@@ -85,7 +85,15 @@ router.patch("/:id", async (req, res) => {
 });
 
 router.delete("/:id", async (req, res) => {
-  await prisma.customer.delete({ where: { id: req.params.id } });
+  const customer = await prisma.customer.findUnique({ where: { id: req.params.id } });
+  if (!customer) return res.status(404).json({ error: "Customer not found" });
+  const orderCount = await prisma.order.count({ where: { customerId: customer.id } });
+  if (orderCount > 0) {
+    return res.status(409).json({
+      error: `${customer.name} has ${orderCount} order${orderCount === 1 ? "" : "s"} on record. Delete those orders first, or keep the customer.`,
+    });
+  }
+  await prisma.customer.delete({ where: { id: customer.id } });
   await logActivity({ userId: req.user.id, action: "DELETE", entityType: "Customer", entityId: req.params.id });
   res.status(204).end();
 });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 
 const PLAN_STYLES = {
@@ -23,6 +24,7 @@ function toDateInput(iso) {
 }
 
 export default function Platform() {
+  const notify = useNotify();
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
@@ -64,6 +66,7 @@ export default function Platform() {
         expiresAt: form.neverExpires ? null : form.expiresAt || null,
         ...extra,
       });
+      notify.success("Client updated");
       setEditing(null);
       load();
     } catch (err) {
