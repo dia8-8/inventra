@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import {
@@ -19,6 +19,13 @@ import {
   MoonIcon,
   ScanIcon,
 } from "./icons";
+
+// Up to two letters for the logo square: "Del Foods" -> "DF", "Maple" -> "M"
+function initialsOf(name) {
+  const words = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  return words.slice(0, 2).map((w) => Array.from(w)[0]).join("").toUpperCase();
+}
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: DashboardIcon, end: true },
@@ -77,6 +84,11 @@ export default function Layout() {
   const mobileExtraItems = isDriver || isSuperAdmin ? [] : allowed(NAV_ITEMS).filter((i) => !MOBILE_NAV_ITEMS.some((m) => m.to === i.to));
   const adminMobileItems = user?.role === "ADMIN" ? allowed(ADMIN_NAV_ITEMS) : [];
   const brandName = isSuperAdmin ? "Platform" : user?.companyName || "Viandes Corona";
+  const brandInitials = initialsOf(brandName);
+
+  useEffect(() => {
+    document.title = `${brandName} — Management`;
+  }, [brandName]);
 
   const showLicenseBanner =
     license && !license.blocked && (license.plan === "TRIAL" || (license.daysLeft !== null && license.daysLeft <= 7));
@@ -87,7 +99,7 @@ export default function Layout() {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 fixed inset-y-0 left-0">
         <div className="h-16 flex items-center gap-2 px-5 border-b border-gray-200 dark:border-gray-700">
-          <span className="w-9 h-9 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold">VC</span>
+          <span className="w-9 h-9 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold">{brandInitials}</span>
           <div className="leading-tight">
             <div className="font-semibold text-sm dark:text-gray-100 truncate max-w-[10rem]">{brandName}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">Management</div>
@@ -137,7 +149,7 @@ export default function Layout() {
         {/* Topbar */}
         <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-6 sticky top-0 z-20">
           <div className="flex items-center gap-2 md:hidden">
-            <span className="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold text-sm">VC</span>
+            <span className="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold text-sm">{brandInitials}</span>
             <span className="font-semibold text-sm dark:text-gray-100 truncate max-w-[10rem]">{brandName}</span>
           </div>
           <div className="hidden md:block" />
