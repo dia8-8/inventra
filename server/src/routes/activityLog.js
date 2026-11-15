@@ -1,12 +1,13 @@
 const express = require("express");
 const prisma = require("../lib/prisma");
 const { requireAuth, requireRole, requireFeature } = require("../middleware/auth");
+const { logActivity } = require("../lib/activityLog");
 
 const router = express.Router();
 router.use(requireAuth, requireFeature("activity-log"), requireRole("ADMIN"));
 
-router.get("/", async (req, res) => {
-  const { entityType, userId, from, to, limit, offset } = req.query;
+function buildWhere(query) {
+  const { entityType, userId, from, to } = query;
   const where = {};
   if (entityType) where.entityType = String(entityType);
   if (userId) where.userId = String(userId);
@@ -15,6 +16,12 @@ router.get("/", async (req, res) => {
     if (from) where.createdAt.gte = new Date(String(from));
     if (to) where.createdAt.lte = new Date(String(to));
   }
+  return where;
+}
+
+router.get("/", async (req, res) => {
+  const { limit, offset } = req.query;
+  const where = buildWhere(req.query);
 
   const take = Math.min(Number(limit) || 50, 200);
   const skip = Number(offset) || 0;
@@ -31,6 +38,30 @@ router.get("/", async (req, res) => {
   ]);
 
   res.json({ logs, total });
+});
+
+// Deletes every entry matching the same filters the list uses (no filters = the whole log).
+// The deletion itself is recorded afterwards so a cleared log is never silently empty.
+router.delete("/", async (req, res) => {
+  const where = buildWhere(req.query);
+  const { count } = await prisma.activityLog.deleteMany({ where });
+
+  if (count > 0) {
+    const { entityType, from, to } = req.query;
+    await logActivity({
+      userId: req.user.id,
+      action: "DELETE",
+      entityType: "ActivityLog",
+      details: { deleted: count, ...(entityType ? { entityType } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) },
+    });
+  }
+  res.json({ deleted: count });
+});
+
+router.delete("/:id", async (req, res) => {
+  const { count } = await prisma.activityLog.deleteMany({ where: { id: req.params.id } });
+  if (count === 0) return res.status(404).json({ error: "Log entry not found" });
+  res.json({ deleted: 1 });
 });
 
 module.exports = router;
