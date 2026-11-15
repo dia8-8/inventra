@@ -248,6 +248,8 @@ export default function InvoiceDesigner() {
 
   if (!layout || !settings) return <PageSkeleton rows={4} />;
 
+  // sections that will really appear (the logo section is empty until a logo is uploaded)
+  const shown = (b) => b.enabled && (b.id !== "logo" || Boolean(layout.logo));
   const setBlock = (id, patch) => setLayout((l) => ({ ...l, blocks: l.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
   const setStyle = (patch) => setLayout((l) => ({ ...l, ...patch }));
   const enabledColumns = layout.columns.filter((c) => c.enabled).length;
@@ -296,7 +298,7 @@ export default function InvoiceDesigner() {
     if (!file) return;
     try {
       const data = await readLogo(file);
-      setLayout((l) => ({ ...l, logo: data }));
+      setLayout((l) => ({ ...l, logo: data, blocks: l.blocks.map((b) => (b.id === "logo" ? { ...b, enabled: true } : b)) }));
       notify.info("Logo added. Save to keep it.");
     } catch (err) {
       notify.error(err.message || "Couldn't use that image");
@@ -305,7 +307,7 @@ export default function InvoiceDesigner() {
 
   // If the section above leaves room on its row but this one is too wide to fit there, say how wide it may be
   function fitHint(blockId) {
-    const rows = toRows(layout.blocks.filter((b) => b.enabled));
+    const rows = toRows(layout.blocks.filter(shown));
     const index = rows.findIndex((r) => r.some((b) => b.id === blockId));
     if (index < 1 || rows[index][0].id !== blockId) return null;
     const previous = rows[index - 1];
@@ -317,7 +319,7 @@ export default function InvoiceDesigner() {
 
   // Which other sections sit on the same row as this one right now
   function neighbours(blockId) {
-    const rows = toRows(layout.blocks.filter((b) => b.enabled));
+    const rows = toRows(layout.blocks.filter(shown));
     const row = rows.find((r) => r.some((b) => b.id === blockId)) || [];
     return row.filter((b) => b.id !== blockId).map((b) => BLOCKS[b.id].label);
   }
@@ -383,28 +385,19 @@ export default function InvoiceDesigner() {
 
   function blockOptions(block) {
     switch (block.id) {
-      case "header":
+      case "logo":
         return (
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-              <Check checked={block.showLogo !== false} onChange={(v) => setBlock("header", { showLogo: v })}>Logo</Check>
-              <Check checked={block.showAddress !== false} onChange={(v) => setBlock("header", { showAddress: v })}>Address</Check>
-              <Check checked={block.showPhone !== false} onChange={(v) => setBlock("header", { showPhone: v })}>Phone</Check>
-              <Check checked={block.showEmail !== false} onChange={(v) => setBlock("header", { showEmail: v })}>Email</Check>
-            </div>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Name, address, phone and email come from <Link to="/settings" className="underline hover:text-brand-600">Settings</Link>.
-            </p>
             <div className="flex items-center gap-3">
               {layout.logo ? (
                 <>
-                  <img src={layout.logo} alt="Logo" className="h-10 max-w-[8rem] object-contain rounded bg-white border border-gray-200 p-1" />
+                  <img src={layout.logo} alt="Logo" className="h-12 max-w-[9rem] object-contain rounded bg-white border border-gray-200 p-1" />
                   <button type="button" onClick={() => setLayout((l) => ({ ...l, logo: null }))} className="text-xs text-red-600 dark:text-red-400 hover:underline">
                     Remove logo
                   </button>
                 </>
               ) : (
-                <span className="text-xs text-gray-500 dark:text-gray-400">No logo yet.</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">No logo yet. Upload one and it appears on the invoice.</span>
               )}
               <label className="text-xs font-medium text-brand-600 dark:text-brand-400 cursor-pointer hover:underline">
                 {layout.logo ? "Replace" : "Upload logo"}
@@ -416,6 +409,19 @@ export default function InvoiceDesigner() {
                 <input type="range" min={24} max={120} step={4} value={layout.logoHeight} onChange={(e) => setStyle({ logoHeight: Number(e.target.value) })} aria-label="Logo height" className="w-full accent-brand-500" />
               </Field>
             )}
+          </div>
+        );
+      case "header":
+        return (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              <Check checked={block.showAddress !== false} onChange={(v) => setBlock("header", { showAddress: v })}>Address</Check>
+              <Check checked={block.showPhone !== false} onChange={(v) => setBlock("header", { showPhone: v })}>Phone</Check>
+              <Check checked={block.showEmail !== false} onChange={(v) => setBlock("header", { showEmail: v })}>Email</Check>
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Name, address, phone and email come from <Link to="/settings" className="underline hover:text-brand-600">Settings</Link>. The logo is its own section above.
+            </p>
           </div>
         );
       case "invoiceInfo":

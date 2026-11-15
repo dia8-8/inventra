@@ -8,7 +8,8 @@
 //   align  how the text inside the block lines up (left / center / right)
 
 export const BLOCKS = {
-  header: { label: "Company header", hint: "Name, address, phone, email and logo" },
+  logo: { label: "Logo", hint: "Your company logo, placed wherever you like" },
+  header: { label: "Company header", hint: "Name, address, phone and email" },
   invoiceInfo: { label: "Invoice details", hint: "Title, invoice number and date" },
   billTo: { label: "Bill to", hint: "Customer name, business, address, phone" },
   status: { label: "Order & payment status", hint: "Current status and whether it is paid" },
@@ -44,7 +45,7 @@ export const WIDTH_STEP = 5;
 
 // Matches how the invoice looked before it became customizable.
 export const DEFAULT_LAYOUT = {
-  version: 2,
+  version: 3,
   accent: "#b91c1c",
   font: "sans",
   textSize: "md",
@@ -52,8 +53,9 @@ export const DEFAULT_LAYOUT = {
   logoHeight: 64,
   logo: null,
   blocks: [
-    { id: "header", enabled: true, width: 50, align: "left", showLogo: true, showAddress: true, showPhone: true, showEmail: true },
-    { id: "invoiceInfo", enabled: true, width: 50, align: "right", title: "Invoice" },
+    { id: "logo", enabled: true, width: 20, align: "left" },
+    { id: "header", enabled: true, width: 45, align: "left", showAddress: true, showPhone: true, showEmail: true },
+    { id: "invoiceInfo", enabled: true, width: 35, align: "right", title: "Invoice" },
     { id: "billTo", enabled: true, width: 50, align: "left" },
     { id: "status", enabled: true, width: 50, align: "right" },
     { id: "items", enabled: true, width: 100, align: "left" },
@@ -102,6 +104,15 @@ export function normalizeLayout(raw) {
     if (!["left", "center", "right"].includes(merged.align)) merged.align = def.align;
     blocks.push(merged);
   }
+  // Layouts saved before the logo was its own section: if the logo was showing in the header,
+  // give it a section of its own on the row above, lined up like the header was.
+  if (!seen.has("logo")) {
+    const headerAt = blocks.findIndex((b) => b.id === "header");
+    const header = blocks[headerAt];
+    const hadLogo = typeof raw.logo === "string" && raw.logo.startsWith("data:image/") && header?.showLogo !== false;
+    blocks.splice(Math.max(headerAt, 0), 0, { ...defaultBlock("logo"), enabled: hadLogo, width: 100, align: header?.align || "left" });
+    seen.add("logo");
+  }
   for (const def of base.blocks) if (!seen.has(def.id)) blocks.push({ ...def, enabled: false });
 
   const columns = [];
@@ -116,7 +127,7 @@ export function normalizeLayout(raw) {
 
   const logoHeight = Number(raw.logoHeight);
   return {
-    version: 2,
+    version: 3,
     accent: /^#[0-9a-fA-F]{6}$/.test(raw.accent || "") ? raw.accent : base.accent,
     font: FONTS[raw.font] ? raw.font : base.font,
     textSize: TEXT_SIZES[raw.textSize] ? raw.textSize : base.textSize,

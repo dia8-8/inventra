@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
   res.json(settings);
 });
 
-const BLOCK_IDS = ["header", "invoiceInfo", "billTo", "status", "items", "totals", "notes", "footer"];
+const BLOCK_IDS = ["logo", "header", "invoiceInfo", "billTo", "status", "items", "totals", "notes", "footer"];
 const COLUMN_KEYS = ["item", "category", "unit", "qty", "unitPrice", "total"];
 
 const blockSchema = z.object({

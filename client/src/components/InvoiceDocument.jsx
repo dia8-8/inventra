@@ -33,6 +33,7 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order, se
 
   const visible = layout.blocks.filter((b) => {
     if (!b.enabled) return false;
+    if (b.id === "logo") return Boolean(layout.logo);
     if (b.id === "notes") return Boolean(order.notes);
     if (b.id === "footer") return Boolean(b.text?.trim());
     return true;
@@ -60,12 +61,12 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order, se
   function renderBlock(block) {
     const text = TEXT_ALIGN[block.align];
     switch (block.id) {
+      case "logo":
+        return <img src={layout.logo} alt="" style={{ maxHeight: layout.logoHeight, maxWidth: "100%" }} className={`block object-contain ${IMG_ALIGN[block.align]}`} />;
+
       case "header":
         return (
           <div className={text}>
-            {block.showLogo !== false && layout.logo && (
-              <img src={layout.logo} alt="" style={{ maxHeight: layout.logoHeight, maxWidth: "100%" }} className={`object-contain mb-2 ${IMG_ALIGN[block.align]}`} />
-            )}
             <div className="text-xl font-bold" style={{ color: accent }}>
               {settings.companyName}
             </div>
