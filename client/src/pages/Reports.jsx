@@ -50,10 +50,17 @@ export default function Reports() {
   const [topProducts, setTopProducts] = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [customerId, setCustomerId] = useState("");
+  const [productId, setProductId] = useState("");
+  const filtered = Boolean(customerId || productId);
 
   function load() {
     setLoading(true);
     const params = { from, to };
+    if (customerId) params.customerId = customerId;
+    if (productId) params.productId = productId;
     Promise.all([
       api.get("/reports/summary", { params }),
       api.get("/reports/trend", { params }),
@@ -69,7 +76,16 @@ export default function Reports() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [from, to]);
+  useEffect(load, [from, to, customerId, productId]);
+
+  useEffect(() => {
+    Promise.all([api.get("/customers"), api.get("/products")])
+      .then(([c, p]) => {
+        setCustomers(c.data);
+        setProducts(p.data);
+      })
+      .catch(() => {});
+  }, []);
 
   const trendData = (trend || []).map((d) => {
     const [y, m, day] = d.date.split("-").map(Number);
@@ -112,20 +128,69 @@ export default function Reports() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={customerId}
+          onChange={(e) => setCustomerId(e.target.value)}
+          aria-label="Filter by customer"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 max-w-full"
+        >
+          <option value="">All customers</option>
+          {customers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={productId}
+          onChange={(e) => setProductId(e.target.value)}
+          aria-label="Filter by product"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 max-w-full"
+        >
+          <option value="">All products</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {filtered && (
+          <button
+            onClick={() => {
+              setCustomerId("");
+              setProductId("");
+            }}
+            className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {filtered && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 -mt-3">
+          Showing sales
+          {customerId && " for " + (customers.find((c) => c.id === customerId)?.name || "this customer")}
+          {productId && " of " + (products.find((p) => p.id === productId)?.name || "this product")}. Expenses belong to the whole business, so they and net profit are hidden while a filter is on.
+          {productId && " Product sales count only that product's lines (discounts and delivery fees aren't split per product)."}
+        </p>
+      )}
+
       {loading || !summary ? (
         <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className={`grid grid-cols-2 gap-4 ${summary.filtered ? "md:grid-cols-3" : "md:grid-cols-3 lg:grid-cols-5"}`}>
             <StatCard label="Orders" value={summary.orderCount} />
             <StatCard label="Total Sales" value={money(summary.totalSales)} />
-            <StatCard label="Total Expenses" value={money(summary.totalExpenses)} tone="bad" />
+            {!summary.filtered && <StatCard label="Total Expenses" value={money(summary.totalExpenses)} tone="bad" />}
             <StatCard label="Gross Profit" value={money(summary.grossProfit)} tone={summary.grossProfit >= 0 ? "good" : "bad"} />
-            <StatCard label="Net Profit" value={money(summary.netProfit)} tone={summary.netProfit >= 0 ? "good" : "bad"} />
+            {!summary.filtered && <StatCard label="Net Profit" value={money(summary.netProfit)} tone={summary.netProfit >= 0 ? "good" : "bad"} />}
           </div>
 
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
-            <h2 className="text-sm font-semibold mb-3 dark:text-gray-100">Sales, Expenses &amp; Profit</h2>
+            <h2 className="text-sm font-semibold mb-3 dark:text-gray-100">{summary.filtered ? "Sales & Profit" : "Sales, Expenses & Profit"}</h2>
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={trendData}>
                 <defs>
