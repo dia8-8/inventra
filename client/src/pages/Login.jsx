@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import BrandMark from "../components/BrandMark";
+import BrandLogo from "../components/BrandLogo";
 
 const inputClass = "input w-full";
 const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
@@ -38,7 +38,7 @@ export default function Login({ mode = "login" }) {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link to="/" aria-label="Inventra home" className="inline-flex mb-3">
-            <BrandMark className="w-14 h-14" />
+            <BrandLogo className="h-12" />
           </Link>
           <h1 className="text-xl font-semibold dark:text-gray-100">{isRegister ? "Start your free trial" : "Welcome back"}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">

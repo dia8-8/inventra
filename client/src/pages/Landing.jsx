@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
-import BrandMark from "../components/BrandMark";
+import BrandLogo from "../components/BrandLogo";
 import {
   OrdersIcon,
   InventoryIcon,
@@ -383,9 +383,8 @@ export default function Landing() {
         }`}
       >
         <div className="max-w-6xl mx-auto h-16 px-4 sm:px-6 grid grid-cols-[1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-4">
-          <Link to="/" className="flex items-center gap-2 justify-self-start">
-            <BrandMark />
-            <span className="hidden sm:inline font-semibold whitespace-nowrap">Inventra</span>
+          <Link to="/" aria-label="Inventra home" className="flex items-center justify-self-start">
+            <BrandLogo className="h-11" />
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-gray-600 dark:text-gray-300">
             <a href="#features" className="hover:text-gray-900 dark:hover:text-white">Features</a>

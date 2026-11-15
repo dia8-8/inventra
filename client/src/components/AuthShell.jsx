@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import BrandMark from "./BrandMark";
+import BrandLogo from "./BrandLogo";
 
 // The centered card layout shared by the sign-in style pages.
 export default function AuthShell({ title, subtitle, children, footer }) {
@@ -8,7 +8,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link to="/" aria-label="Inventra home" className="inline-flex mb-3">
-            <BrandMark className="w-14 h-14" />
+            <BrandLogo className="h-12" />
           </Link>
           <h1 className="text-xl font-semibold dark:text-gray-100">{title}</h1>
           {subtitle && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{subtitle}</p>}
