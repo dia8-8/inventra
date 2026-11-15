@@ -23,13 +23,15 @@ const COLUMN_KEYS = ["item", "category", "unit", "qty", "unitPrice", "total"];
 const blockSchema = z.object({
   id: z.enum(BLOCK_IDS),
   enabled: z.boolean(),
-  width: z.enum(["full", "half"]),
+  // a percentage of the page width (older layouts stored "full" / "half")
+  width: z.union([z.enum(["full", "half"]), z.number().int().min(20).max(100)]),
   align: z.enum(["left", "center", "right"]),
   title: z.string().max(40).optional(),
   text: z.string().max(500).optional(),
   showLogo: z.boolean().optional(),
   showAddress: z.boolean().optional(),
   showPhone: z.boolean().optional(),
+  showEmail: z.boolean().optional(),
   showPaid: z.boolean().optional(),
 });
 
@@ -39,6 +41,9 @@ const invoiceLayoutSchema = z.object({
   version: z.number().int().optional(),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Accent must be a hex color"),
   font: z.enum(["sans", "serif", "mono"]),
+  textSize: z.enum(["sm", "md", "lg"]).optional(),
+  spacing: z.enum(["compact", "normal", "roomy"]).optional(),
+  logoHeight: z.number().int().min(20).max(140).optional(),
   logo: z
     .string()
     .max(250000, "Logo is too large")
@@ -58,6 +63,11 @@ const settingsSchema = z.object({
   companyName: z.string().min(1),
   address: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
+  email: z
+    .union([z.string().trim().email("Enter a valid company email"), z.literal("")])
+    .optional()
+    .nullable()
+    .transform((v) => v || null),
   invoicePrefix: z.string().min(1),
   currency: z.string().min(1),
   defaultLowStockThreshold: z.coerce.number().nonnegative(),

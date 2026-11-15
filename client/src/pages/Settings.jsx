@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/client";
 import { PageSkeleton } from "../components/ui";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import { useAuth } from "../context/AuthContext";
 import { parseVariableWeightCode } from "../lib/variableWeightBarcode";
@@ -28,6 +29,7 @@ export default function Settings() {
         companyName: form.companyName,
         address: form.address,
         phone: form.phone,
+        email: form.email,
         invoicePrefix: form.invoicePrefix,
         currency: form.currency,
         defaultLowStockThreshold: form.defaultLowStockThreshold,
@@ -88,22 +90,30 @@ export default function Settings() {
             className="input w-full"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address</label>
-          <input
-            value={form.address || ""}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-            className="input w-full"
-          />
+        <AddressAutocomplete label="Address" value={form.address || ""} onChange={(v) => setForm((prev) => ({ ...prev, address: v }))} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+            <input
+              type="tel"
+              value={form.phone || ""}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="input w-full"
+              placeholder="514-555-0123"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input
+              type="email"
+              value={form.email || ""}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="input w-full"
+              placeholder="billing@yourcompany.com"
+            />
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
-          <input
-            value={form.phone || ""}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            className="input w-full"
-          />
-        </div>
+        <p className="-mt-1 text-xs text-gray-500 dark:text-gray-400">The address, phone and email appear on your invoices.</p>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice prefix</label>

@@ -1,4 +1,4 @@
-import { COLUMNS, FONTS, normalizeLayout } from "../lib/invoiceLayout";
+import { BLOCKS, COLUMNS, FONTS, SPACINGS, TEXT_SIZES, normalizeLayout, toRows } from "../lib/invoiceLayout";
 
 const STATUS_LABELS = {
   PENDING: "Pending",
@@ -9,9 +9,10 @@ const STATUS_LABELS = {
 };
 
 const TEXT_ALIGN = { left: "text-left", center: "text-center", right: "text-right" };
-const FLEX_ALIGN = { left: "justify-start", center: "justify-center", right: "justify-end" };
 const IMG_ALIGN = { left: "", center: "mx-auto", right: "ml-auto" };
+const PLACE = { left: "flex-start", center: "center", right: "flex-end" };
 const NUMERIC = new Set(["qty", "unitPrice", "total"]);
+const GUTTER = 12; // px of space on each side of a section; neighbours are therefore 24px apart
 
 function makeMoney(currency) {
   let formatter;
@@ -23,21 +24,8 @@ function makeMoney(currency) {
   return (n) => formatter.format(Number(n) || 0);
 }
 
-// Blocks marked "half" that sit next to each other share a row; a lone half block takes the full width.
-function toRows(blocks) {
-  const rows = [];
-  for (let i = 0; i < blocks.length; i++) {
-    if (blocks[i].width === "half" && blocks[i + 1]?.width === "half") {
-      rows.push([blocks[i], blocks[i + 1]]);
-      i++;
-    } else {
-      rows.push([blocks[i]]);
-    }
-  }
-  return rows;
-}
-
-export default function InvoiceDocument({ layout: rawLayout, settings, order }) {
+// In the designer, \`selectedId\` highlights a section and \`onSelect\` makes the sections clickable.
+export default function InvoiceDocument({ layout: rawLayout, settings, order, selectedId, onSelect }) {
   const layout = normalizeLayout(rawLayout);
   const money = makeMoney(settings?.currency);
   const accent = layout.accent;
@@ -69,20 +57,21 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order }) 
     }
   }
 
-  function renderBlock(block, inHalf) {
+  function renderBlock(block) {
     const text = TEXT_ALIGN[block.align];
     switch (block.id) {
       case "header":
         return (
           <div className={text}>
             {block.showLogo !== false && layout.logo && (
-              <img src={layout.logo} alt="" className={`max-h-16 max-w-[12rem] object-contain mb-2 ${IMG_ALIGN[block.align]}`} />
+              <img src={layout.logo} alt="" style={{ maxHeight: layout.logoHeight, maxWidth: "100%" }} className={`object-contain mb-2 ${IMG_ALIGN[block.align]}`} />
             )}
             <div className="text-xl font-bold" style={{ color: accent }}>
               {settings.companyName}
             </div>
             {block.showAddress !== false && settings.address && <div className="text-sm text-gray-500">{settings.address}</div>}
             {block.showPhone !== false && settings.phone && <div className="text-sm text-gray-500">{settings.phone}</div>}
+            {block.showEmail !== false && settings.email && <div className="text-sm text-gray-500 break-all">{settings.email}</div>}
           </div>
         );
 
@@ -151,41 +140,39 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order }) 
       case "totals": {
         const balanceDue = Number(order.total) - Number(order.amountPaid);
         return (
-          <div className={`flex ${FLEX_ALIGN[block.align]}`}>
-            <div className={`space-y-1 text-sm ${inHalf ? "w-full" : "w-56"}`}>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Subtotal</span>
-                <span>{money(order.subtotal)}</span>
-              </div>
-              {Number(order.discount) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Discount</span>
-                  <span>-{money(order.discount)}</span>
-                </div>
-              )}
-              {Number(order.deliveryFee) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Delivery fee</span>
-                  <span>{money(order.deliveryFee)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-semibold text-base pt-1" style={{ borderTop: `2px solid ${accent}` }}>
-                <span>Total</span>
-                <span>{money(order.total)}</span>
-              </div>
-              {block.showPaid !== false && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Paid</span>
-                    <span>{money(order.amountPaid)}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold" style={{ color: accent }}>
-                    <span>Balance Due</span>
-                    <span>{money(balanceDue)}</span>
-                  </div>
-                </>
-              )}
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-500">Subtotal</span>
+              <span>{money(order.subtotal)}</span>
             </div>
+            {Number(order.discount) > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">Discount</span>
+                <span>-{money(order.discount)}</span>
+              </div>
+            )}
+            {Number(order.deliveryFee) > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-500">Delivery fee</span>
+                <span>{money(order.deliveryFee)}</span>
+              </div>
+            )}
+            <div className="flex justify-between gap-4 font-semibold text-base pt-1" style={{ borderTop: `2px solid ${accent}` }}>
+              <span>Total</span>
+              <span>{money(order.total)}</span>
+            </div>
+            {block.showPaid !== false && (
+              <>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-500">Paid</span>
+                  <span>{money(order.amountPaid)}</span>
+                </div>
+                <div className="flex justify-between gap-4 font-semibold" style={{ color: accent }}>
+                  <span>Balance Due</span>
+                  <span>{money(balanceDue)}</span>
+                </div>
+              </>
+            )}
           </div>
         );
       }
@@ -208,21 +195,65 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order }) 
     }
   }
 
+  const selectable = typeof onSelect === "function";
+
   return (
-    <div className={`space-y-6 ${FONTS[layout.font].className}`}>
-      {toRows(visible).map((row, i) =>
-        row.length === 2 ? (
-          <div key={i} className="grid grid-cols-2 gap-6">
-            {row.map((b) => (
-              <div key={b.id} className="min-w-0">
-                {renderBlock(b, true)}
+    <div
+      className={`flex flex-col ${FONTS[layout.font].className}`}
+      style={{ gap: SPACINGS[layout.spacing].gap, zoom: TEXT_SIZES[layout.textSize].zoom }}
+    >
+      {toRows(visible).map((row, i) => (
+        <div
+          key={i}
+          className="flex items-start"
+          style={{
+            margin: `0 -${GUTTER}px`,
+            // several sections: spread to both edges; a lone narrow section goes where its text alignment says
+            justifyContent: row.length > 1 ? "space-between" : PLACE[row[0].align],
+          }}
+        >
+          {row.map((b) => {
+            const selected = selectable && selectedId === b.id;
+            return (
+              <div
+                key={b.id}
+                data-block={b.id}
+                style={{ width: `${b.width}%`, padding: `0 ${GUTTER}px`, minWidth: 0 }}
+                {...(selectable
+                  ? {
+                      role: "button",
+                      tabIndex: 0,
+                      "aria-label": `Edit ${BLOCKS[b.id].label}`,
+                      "aria-pressed": selected,
+                      onClick: () => onSelect(b.id),
+                      onKeyDown: (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onSelect(b.id);
+                        }
+                      },
+                    }
+                  : {})}
+              >
+                <div
+                  className={
+                    selectable
+                      ? `relative rounded-md cursor-pointer transition ${
+                          selected ? "outline outline-2 outline-offset-4 outline-brand-500" : "hover:outline hover:outline-1 hover:outline-dashed hover:outline-offset-4 hover:outline-gray-400"
+                        }`
+                      : ""
+                  }
+                >
+                  {selected && (
+                    <span className="absolute -top-5 left-0 z-10 rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold text-white print:hidden">{BLOCKS[b.id].label}</span>
+                  )}
+                  {renderBlock(b)}
+                </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div key={i}>{renderBlock(row[0], false)}</div>
-        )
-      )}
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

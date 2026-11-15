@@ -306,6 +306,7 @@ model Setting {
   companyName              String   @default("Viandes Corona")
   address                  String?
   phone                    String?
+  email                    String?
   invoicePrefix            String   @default("ORD")
   currency                 String   @default("CAD")
   defaultLowStockThreshold Decimal  @default(10) @db.Decimal(10, 2)

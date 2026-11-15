@@ -5,9 +5,20 @@ import { PageSkeleton } from "../components/ui";
 import InvoiceDocument from "../components/InvoiceDocument";
 import A4Sheet from "../components/A4Sheet";
 import { useNotify, errorMessage } from "../context/NotifyContext";
-import { ACCENTS, BLOCKS, COLUMNS, FONTS, SAMPLE_ORDER, normalizeLayout } from "../lib/invoiceLayout";
+import {
+  ACCENTS,
+  BLOCKS,
+  COLUMNS,
+  FONTS,
+  SAMPLE_ORDER,
+  SPACINGS,
+  TEXT_SIZES,
+  normalizeLayout,
+  toRows,
+} from "../lib/invoiceLayout";
 
 const MAX_LOGO_CHARS = 240000;
+const WIDTH_CHIPS = [25, 40, 50, 60, 75, 100];
 
 function arrayMove(list, from, to) {
   const next = list.slice();
@@ -46,7 +57,7 @@ function readLogo(file) {
 
 // A list whose rows can be dragged by their handle to reorder. Up/down buttons do the same
 // for touch screens, where the browser's drag-and-drop doesn't work.
-function DragList({ items, getId, onMove, renderItem }) {
+function DragList({ items, getId, onMove, renderItem, itemClassName = () => "" }) {
   const [dragIndex, setDragIndex] = useState(null);
   const [overIndex, setOverIndex] = useState(null);
 
@@ -55,6 +66,7 @@ function DragList({ items, getId, onMove, renderItem }) {
       {items.map((item, index) => (
         <li
           key={getId(item)}
+          id={`card-${getId(item)}`}
           onDragOver={(e) => {
             if (dragIndex === null) return;
             e.preventDefault();
@@ -67,7 +79,7 @@ function DragList({ items, getId, onMove, renderItem }) {
             setOverIndex(null);
           }}
           className={`rounded-xl border bg-white dark:bg-gray-800 transition ${
-            overIndex === index && dragIndex !== index ? "border-brand-500 ring-2 ring-brand-500/40" : "border-gray-200 dark:border-gray-700"
+            overIndex === index && dragIndex !== index ? "border-brand-500 ring-2 ring-brand-500/40" : itemClassName(item) || "border-gray-200 dark:border-gray-700"
           } ${dragIndex === index ? "opacity-40" : ""}`}
         >
           {renderItem(item, {
@@ -99,7 +111,7 @@ function DragList({ items, getId, onMove, renderItem }) {
 
 function Handle({ handleProps, isFirst, isLast, moveUp, moveDown, label }) {
   return (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
       <span
         {...handleProps}
         title="Drag to reorder"
@@ -133,7 +145,7 @@ function Handle({ handleProps, isFirst, isLast, moveUp, moveDown, label }) {
 
 function Switch({ checked, onChange, label, disabled }) {
   return (
-    <label className={`inline-flex items-center ${disabled ? "opacity-50" : "cursor-pointer"}`}>
+    <label className={`inline-flex items-center ${disabled ? "opacity-50" : "cursor-pointer"}`} onClick={(e) => e.stopPropagation()}>
       <input type="checkbox" className="sr-only peer" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
       <span className="relative h-5 w-9 rounded-full bg-gray-300 dark:bg-gray-600 peer-checked:bg-brand-500 transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500" />
     </label>
@@ -149,7 +161,7 @@ function Segmented({ value, options, onChange, label }) {
           type="button"
           onClick={() => onChange(o.value)}
           aria-pressed={value === o.value}
-          className={`px-2.5 py-1 ${value === o.value ? "bg-brand-500 text-white" : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
+          className={`px-2.5 py-1.5 ${value === o.value ? "bg-brand-500 text-white" : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
         >
           {o.label}
         </button>
@@ -167,8 +179,45 @@ function Check({ checked, onChange, children }) {
   );
 }
 
-const textInput =
-  "w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
+function Field({ label, children }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</div>
+      {children}
+    </div>
+  );
+}
+
+const ALIGN_PATHS = {
+  left: "M4 6h16M4 10h10M4 14h16M4 18h10",
+  center: "M4 6h16M7 10h10M4 14h16M7 18h10",
+  right: "M4 6h16M10 10h10M4 14h16M10 18h10",
+};
+
+// Three icon buttons: they look like the alignment buttons in any text editor
+function AlignButtons({ value, onChange }) {
+  return (
+    <div role="group" aria-label="Alignment" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden">
+      {["left", "center", "right"].map((a) => (
+        <button
+          key={a}
+          type="button"
+          title={`Align ${a}`}
+          aria-label={`Align ${a}`}
+          aria-pressed={value === a}
+          onClick={() => onChange(a)}
+          className={`px-3 py-1.5 ${value === a ? "bg-brand-500 text-white" : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"}`}
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d={ALIGN_PATHS[a]} />
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const textInput = "input w-full !py-1.5";
 
 export default function InvoiceDesigner() {
   const notify = useNotify();
@@ -176,6 +225,7 @@ export default function InvoiceDesigner() {
   const [layout, setLayout] = useState(null);
   const [savedJson, setSavedJson] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedId, setSelectedId] = useState("header");
 
   useEffect(() => {
     api
@@ -189,11 +239,17 @@ export default function InvoiceDesigner() {
       .catch((err) => notify.error(errorMessage(err, "Couldn't load the invoice settings")));
   }, []);
 
+  // Clicking a section on the invoice brings its settings into view
+  useEffect(() => {
+    document.getElementById(`card-${selectedId}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId]);
+
   const dirty = useMemo(() => layout && JSON.stringify(layout) !== savedJson, [layout, savedJson]);
 
   if (!layout || !settings) return <PageSkeleton rows={4} />;
 
   const setBlock = (id, patch) => setLayout((l) => ({ ...l, blocks: l.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
+  const setStyle = (patch) => setLayout((l) => ({ ...l, ...patch }));
   const enabledColumns = layout.columns.filter((c) => c.enabled).length;
 
   async function save() {
@@ -247,16 +303,98 @@ export default function InvoiceDesigner() {
     }
   }
 
+  // If the section above leaves room on its row but this one is too wide to fit there, say how wide it may be
+  function fitHint(blockId) {
+    const rows = toRows(layout.blocks.filter((b) => b.enabled));
+    const index = rows.findIndex((r) => r.some((b) => b.id === blockId));
+    if (index < 1 || rows[index][0].id !== blockId) return null;
+    const previous = rows[index - 1];
+    const free = Math.floor((100 - previous.reduce((sum, b) => sum + b.width, 0)) / 5) * 5;
+    const block = rows[index][0];
+    if (free < 20 || block.width <= free) return null;
+    return { free, label: BLOCKS[previous[previous.length - 1].id].label };
+  }
+
+  // Which other sections sit on the same row as this one right now
+  function neighbours(blockId) {
+    const rows = toRows(layout.blocks.filter((b) => b.enabled));
+    const row = rows.find((r) => r.some((b) => b.id === blockId)) || [];
+    return row.filter((b) => b.id !== blockId).map((b) => BLOCKS[b.id].label);
+  }
+
+  function sizePanel(block) {
+    const others = neighbours(block.id);
+    const hint = fitHint(block.id);
+    const placement = { left: "flex-start", center: "center", right: "flex-end" }[block.align];
+    return (
+      <div className="space-y-4 rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3">
+        <Field label={`Width · ${block.width}% of the page`}>
+          <input
+            type="range"
+            min={20}
+            max={100}
+            step={5}
+            value={block.width}
+            onChange={(e) => setBlock(block.id, { width: Number(e.target.value) })}
+            aria-label="Width in percent"
+            className="w-full accent-brand-500"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {WIDTH_CHIPS.map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setBlock(block.id, { width: w })}
+                aria-pressed={block.width === w}
+                className={`rounded-md px-2 py-1 text-[11px] font-medium border ${
+                  block.width === w
+                    ? "bg-brand-500 border-brand-500 text-white"
+                    : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-brand-400"
+                }`}
+              >
+                {w === 100 ? "Full" : `${w}%`}
+              </button>
+            ))}
+          </div>
+          <div className="mt-1.5 h-3 rounded bg-gray-200 dark:bg-gray-700 flex" style={{ justifyContent: others.length ? "flex-start" : placement }} aria-hidden="true">
+            <div className="h-3 rounded bg-brand-500" style={{ width: `${block.width}%` }} />
+          </div>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            {others.length ? `Shares a row with ${others.join(" and ")}.` : block.width < 100 ? "On its own row, positioned by the alignment below." : "Takes the whole row."}
+          </p>
+          {hint && (
+            <button
+              type="button"
+              onClick={() => setBlock(block.id, { width: hint.free })}
+              className="text-left text-[11px] rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-2 py-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+            >
+              Only {hint.free}% is free next to {hint.label}. <span className="font-semibold underline">Set to {hint.free}%</span> to place it beside it.
+            </button>
+          )}
+        </Field>
+
+        <Field label={block.id === "items" ? "Table alignment" : "Align"}>
+          <AlignButtons value={block.align} onChange={(a) => setBlock(block.id, { align: a })} />
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">Lines up the text, and when a section is alone on its row it also decides left, middle or right on the page.</p>
+        </Field>
+      </div>
+    );
+  }
+
   function blockOptions(block) {
     switch (block.id) {
       case "header":
         return (
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               <Check checked={block.showLogo !== false} onChange={(v) => setBlock("header", { showLogo: v })}>Logo</Check>
               <Check checked={block.showAddress !== false} onChange={(v) => setBlock("header", { showAddress: v })}>Address</Check>
               <Check checked={block.showPhone !== false} onChange={(v) => setBlock("header", { showPhone: v })}>Phone</Check>
+              <Check checked={block.showEmail !== false} onChange={(v) => setBlock("header", { showEmail: v })}>Email</Check>
             </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Name, address, phone and email come from <Link to="/settings" className="underline hover:text-brand-600">Settings</Link>.
+            </p>
             <div className="flex items-center gap-3">
               {layout.logo ? (
                 <>
@@ -273,6 +411,11 @@ export default function InvoiceDesigner() {
                 <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onLogoPicked} className="sr-only" />
               </label>
             </div>
+            {layout.logo && (
+              <Field label={`Logo size · ${layout.logoHeight}px tall`}>
+                <input type="range" min={24} max={120} step={4} value={layout.logoHeight} onChange={(e) => setStyle({ logoHeight: Number(e.target.value) })} aria-label="Logo height" className="w-full accent-brand-500" />
+              </Field>
+            )}
           </div>
         );
       case "invoiceInfo":
@@ -297,7 +440,7 @@ export default function InvoiceDesigner() {
             <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Table columns (drag to reorder)</div>
             <DragList
               items={layout.columns}
-              getId={(c) => c.key}
+              getId={(c) => `col-${c.key}`}
               onMove={(from, to) => setLayout((l) => ({ ...l, columns: arrayMove(l.columns, from, to) }))}
               renderItem={(col, ctx) => (
                 <div className="flex items-center gap-2 px-2 py-1.5">
@@ -327,14 +470,14 @@ export default function InvoiceDesigner() {
             ← Settings
           </Link>
           <h1 className="text-xl font-semibold dark:text-gray-100">Invoice layout</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Drag the sections into the order you want, switch them on or off, and see the result live.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Click any part of the invoice to change it. Drag sections to reorder them.</p>
         </div>
         <div className="flex items-center gap-2">
           {dirty && <span className="text-xs text-amber-600 dark:text-amber-400">Unsaved changes</span>}
-          <button type="button" onClick={resetToDefault} disabled={saving} className="btn-secondary disabled:opacity-50">
+          <button type="button" onClick={resetToDefault} disabled={saving} className="btn-secondary">
             Reset
           </button>
-          <button type="button" onClick={save} disabled={saving || !dirty} className="btn-primary disabled:opacity-50">
+          <button type="button" onClick={save} disabled={saving || !dirty} className="btn-primary">
             {saving ? "Saving…" : "Save layout"}
           </button>
         </div>
@@ -342,10 +485,9 @@ export default function InvoiceDesigner() {
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] items-start">
         <div className="space-y-4 min-w-0">
-          <section className="card p-4 space-y-3">
-            <h2 className="text-sm font-semibold dark:text-gray-100">Style</h2>
-            <div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">Accent color</div>
+          <section className="card p-4 space-y-4">
+            <h2 className="text-sm font-semibold dark:text-gray-100">Page style</h2>
+            <Field label="Accent color">
               <div className="flex flex-wrap items-center gap-2">
                 {ACCENTS.map((c) => (
                   <button
@@ -353,85 +495,81 @@ export default function InvoiceDesigner() {
                     type="button"
                     aria-label={`Accent ${c}`}
                     aria-pressed={layout.accent.toLowerCase() === c}
-                    onClick={() => setLayout((l) => ({ ...l, accent: c }))}
+                    onClick={() => setStyle({ accent: c })}
                     style={{ backgroundColor: c }}
                     className={`h-7 w-7 rounded-full ring-offset-2 ring-offset-white dark:ring-offset-gray-800 transition ${layout.accent.toLowerCase() === c ? "ring-2 ring-gray-900 dark:ring-white" : "hover:scale-110"}`}
                   />
                 ))}
                 <label className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-                  <input type="color" value={layout.accent} onChange={(e) => setLayout((l) => ({ ...l, accent: e.target.value }))} className="h-7 w-7 rounded cursor-pointer bg-transparent" aria-label="Custom accent color" />
+                  <input type="color" value={layout.accent} onChange={(e) => setStyle({ accent: e.target.value })} className="h-7 w-7 rounded cursor-pointer bg-transparent" aria-label="Custom accent color" />
                   Custom
                 </label>
               </div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">Font</div>
-              <Segmented
-                label="Font"
-                value={layout.font}
-                onChange={(v) => setLayout((l) => ({ ...l, font: v }))}
-                options={Object.entries(FONTS).map(([value, f]) => ({ value, label: f.label }))}
-              />
+            </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Font">
+                <Segmented label="Font" value={layout.font} onChange={(v) => setStyle({ font: v })} options={Object.entries(FONTS).map(([value, f]) => ({ value, label: f.label }))} />
+              </Field>
+              <Field label="Text size">
+                <Segmented label="Text size" value={layout.textSize} onChange={(v) => setStyle({ textSize: v })} options={Object.entries(TEXT_SIZES).map(([value, t]) => ({ value, label: t.label }))} />
+              </Field>
+              <Field label="Space between sections">
+                <Segmented label="Spacing" value={layout.spacing} onChange={(v) => setStyle({ spacing: v })} options={Object.entries(SPACINGS).map(([value, s]) => ({ value, label: s.label }))} />
+              </Field>
             </div>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold dark:text-gray-100">Sections</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Two neighbouring sections set to “Half” sit side by side on one row.
-            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Turn sections on or off, drag to reorder, and select one to set its width and alignment.</p>
             <DragList
               items={layout.blocks}
               getId={(b) => b.id}
+              itemClassName={(b) => (selectedId === b.id ? "border-brand-500 ring-1 ring-brand-500/50" : "")}
               onMove={(from, to) => setLayout((l) => ({ ...l, blocks: arrayMove(l.blocks, from, to) }))}
-              renderItem={(block, ctx) => (
-                <div className="p-3 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Handle {...ctx} label={BLOCKS[block.id].label} />
-                    <div className="min-w-0 flex-1">
-                      <div className={`text-sm font-medium ${block.enabled ? "dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>{BLOCKS[block.id].label}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{BLOCKS[block.id].hint}</div>
+              renderItem={(block, ctx) => {
+                const selected = selectedId === block.id;
+                return (
+                  <div className="p-3">
+                    <div
+                      className="flex items-center gap-2 cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={selected}
+                      onClick={() => setSelectedId(block.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedId(block.id);
+                        }
+                      }}
+                    >
+                      <Handle {...ctx} label={BLOCKS[block.id].label} />
+                      <div className="min-w-0 flex-1">
+                        <div className={`text-sm font-medium ${block.enabled ? "dark:text-gray-100" : "text-gray-400 dark:text-gray-500"}`}>{BLOCKS[block.id].label}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{BLOCKS[block.id].hint}</div>
+                      </div>
+                      {block.enabled && <span className="text-[11px] tabular-nums text-gray-400 dark:text-gray-500 shrink-0">{block.width}%</span>}
+                      <Switch checked={block.enabled} onChange={(v) => setBlock(block.id, { enabled: v })} label={`Show ${BLOCKS[block.id].label}`} />
                     </div>
-                    <Switch checked={block.enabled} onChange={(v) => setBlock(block.id, { enabled: v })} label={`Show ${BLOCKS[block.id].label}`} />
+                    {selected && block.enabled && (
+                      <div className="mt-3 space-y-4">
+                        {sizePanel(block)}
+                        {blockOptions(block)}
+                      </div>
+                    )}
+                    {selected && !block.enabled && <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">This section is switched off. Turn it on to include it on the invoice.</p>}
                   </div>
-                  {block.enabled && (
-                    <div className="space-y-3 pl-1">
-                      {block.id !== "items" && (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                          <Segmented
-                            label="Width"
-                            value={block.width}
-                            onChange={(v) => setBlock(block.id, { width: v })}
-                            options={[
-                              { value: "full", label: "Full" },
-                              { value: "half", label: "Half" },
-                            ]}
-                          />
-                          <Segmented
-                            label="Align"
-                            value={block.align}
-                            onChange={(v) => setBlock(block.id, { align: v })}
-                            options={[
-                              { value: "left", label: "Left" },
-                              { value: "center", label: "Center" },
-                              { value: "right", label: "Right" },
-                            ]}
-                          />
-                        </div>
-                      )}
-                      {blockOptions(block)}
-                    </div>
-                  )}
-                </div>
-              )}
+                );
+              }}
             />
           </section>
         </div>
 
         <div className="lg:sticky lg:top-20 min-w-0">
-          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Live preview on an A4 page (210 × 297 mm) with a sample order</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Live preview on an A4 page with a sample order. Click a section to edit it.</div>
           <A4Sheet>
-            <InvoiceDocument layout={layout} settings={settings} order={SAMPLE_ORDER} />
+            <InvoiceDocument layout={layout} settings={settings} order={SAMPLE_ORDER} selectedId={selectedId} onSelect={setSelectedId} />
           </A4Sheet>
         </div>
       </div>
