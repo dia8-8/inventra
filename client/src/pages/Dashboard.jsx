@@ -1,21 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import api from "../api/client";
-import { useTheme } from "../context/ThemeContext";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import { useAuth } from "../context/AuthContext";
+import { ChartTooltip, DonutChart, STATUS_COLORS, useChartTheme } from "../components/charts";
+import { EmptyState, PageSkeleton, Skeleton, StatCard } from "../components/ui";
+import { AlertIcon, CashIcon, CheckCircleIcon, ClockIcon, PlusIcon, ReceiptIcon, ReportsIcon, TrendUpIcon } from "../components/icons";
 
 const STATUS_LABELS = {
   PENDING: "Pending",
@@ -24,40 +14,23 @@ const STATUS_LABELS = {
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
 };
-const STATUS_COLOR_HEX = {
-  PENDING: "#6b7280",
-  PREPARING: "#f59e0b",
-  OUT_FOR_DELIVERY: "#3b82f6",
-  DELIVERED: "#16a34a",
-  CANCELLED: "#b91c1c",
-};
 
-function money(n) {
-  return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(n || 0);
+const money = (n) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(n || 0);
+const moneyCompact = (n) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", notation: "compact", maximumFractionDigits: 1 }).format(n || 0);
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-function StatCard({ label, value, tone = "default", to }) {
-  const tones = {
-    default: "text-gray-900 dark:text-gray-100",
-    good: "text-green-600 dark:text-green-400",
-    bad: "text-red-600 dark:text-red-400",
-    warn: "text-amber-600 dark:text-amber-400",
-  };
-  const content = (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm h-full">
-      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{label}</div>
-      <div className={`text-2xl font-semibold ${tones[tone]}`}>{value}</div>
-    </div>
-  );
-  return to ? <Link to={to}>{content}</Link> : content;
+function shortDate(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 }
 
 export default function Dashboard() {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  const gridStroke = isDark ? "#374151" : "#f3f4f6";
-  const tickStyle = { fontSize: 11, fill: isDark ? "#9ca3af" : "#6b7280" };
-  const tooltipStyle = isDark ? { backgroundColor: "#1f2937", border: "1px solid #374151", color: "#f3f4f6" } : undefined;
+  const { user } = useAuth();
+  const chart = useChartTheme();
   const [data, setData] = useState(null);
   const [trends, setTrends] = useState(null);
   const [error, setError] = useState("");
@@ -70,116 +43,176 @@ export default function Dashboard() {
     api.get("/dashboard/trends").then(({ data }) => setTrends(data));
   }, []);
 
-  if (error) return <div className="text-red-600 dark:text-red-400">{error}</div>;
-  if (!data) return <div className="text-gray-500 dark:text-gray-400">Loading…</div>;
+  const salesTrend = useMemo(() => (trends?.salesTrend || []).map((d) => ({ ...d, label: shortDate(d.date) })), [trends]);
+  const salesValues = salesTrend.map((d) => d.sales);
+  const periodTotal = salesValues.reduce((a, b) => a + b, 0);
+  const bestDay = salesTrend.reduce((best, d) => (d.sales > (best?.sales ?? -1) ? d : best), null);
+  const yesterday = salesValues.length >= 2 ? salesValues[salesValues.length - 2] : 0;
+  const today = salesValues.length ? salesValues[salesValues.length - 1] : 0;
+  const salesDelta = yesterday > 0 ? ((today - yesterday) / yesterday) * 100 : undefined;
 
-  const salesTrend = (trends?.salesTrend || []).map((d) => {
-    const [y, m, day] = d.date.split("-").map(Number);
-    return {
-      ...d,
-      label: new Date(y, m - 1, day).toLocaleDateString("en-CA", { month: "short", day: "numeric" }),
-    };
-  });
-  const statusBreakdown = (trends?.statusBreakdown || []).map((s) => ({
-    ...s,
-    label: STATUS_LABELS[s.status] || s.status,
+  const statusData = (trends?.statusBreakdown || []).map((s) => ({
+    name: STATUS_LABELS[s.status] || s.status,
+    value: s.count,
+    color: STATUS_COLORS[s.status] || "#94a3b8",
   }));
+  const topProducts = trends?.topProducts || [];
+  const topMax = Math.max(1, ...topProducts.map((p) => p.revenue));
+
+  if (error) return <div className="text-red-600 dark:text-red-400">{error}</div>;
+  if (!data) return <PageSkeleton stats={6} rows={0} />;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold dark:text-gray-100">Dashboard</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Today's overview</p>
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight dark:text-gray-100">
+            {greeting()}, {user?.name?.split(" ")[0]}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {new Date().toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric" })} · here's how the business is doing
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to="/reports" className="btn-secondary">
+            <ReportsIcon className="h-4 w-4" />
+            Reports
+          </Link>
+          <Link to="/orders" className="btn-primary">
+            <PlusIcon className="h-4 w-4" />
+            New order
+          </Link>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <StatCard label="Sales Today" value={money(data.totalSalesToday)} to="/orders" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4 stagger">
+        <StatCard label="Sales today" value={data.totalSalesToday} format={money} icon={CashIcon} tone="brand" to="/orders" delta={salesDelta} spark={salesValues} />
+        <StatCard label="Profit today" value={data.profitToday} format={money} icon={TrendUpIcon} tone={data.profitToday >= 0 ? "good" : "bad"} />
+        <StatCard label="Pending orders" value={data.pendingOrders} icon={ClockIcon} tone="info" to="/orders?status=PENDING" />
+        <StatCard label="Delivered today" value={data.completedDeliveriesToday} icon={CheckCircleIcon} tone="good" />
         <StatCard
-          label="Profit Today"
-          value={money(data.profitToday)}
-          tone={data.profitToday >= 0 ? "good" : "bad"}
-        />
-        <StatCard label="Pending Orders" value={data.pendingOrders} to="/orders" />
-        <StatCard label="Delivered Today" value={data.completedDeliveriesToday} tone="good" />
-        <StatCard
-          label="Unpaid Invoices"
-          value={`${data.unpaidInvoicesCount} · ${money(data.unpaidInvoicesTotal)}`}
-          tone={data.unpaidInvoicesCount > 0 ? "warn" : "default"}
+          label="Unpaid invoices"
+          display={`${data.unpaidInvoicesCount} · ${moneyCompact(data.unpaidInvoicesTotal)}`}
+          icon={ReceiptIcon}
+          tone={data.unpaidInvoicesCount > 0 ? "warn" : "neutral"}
           to="/orders?paymentStatus=UNPAID"
         />
-        <StatCard
-          label="Low Stock Items"
-          value={data.lowStockCount}
-          tone={data.lowStockCount > 0 ? "bad" : "good"}
-          to="/inventory"
-        />
+        <StatCard label="Low stock items" value={data.lowStockCount} icon={AlertIcon} tone={data.lowStockCount > 0 ? "bad" : "good"} to="/inventory" />
       </div>
 
-      {data.lowStockProducts.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
-          <h2 className="text-sm font-semibold mb-3 dark:text-gray-100">Low Stock Alerts</h2>
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {data.lowStockProducts.map((p) => (
-              <div key={p.id} className="py-2 flex justify-between text-sm dark:text-gray-200">
-                <span>{p.name}</span>
-                <span className="text-red-600 dark:text-red-400 font-medium">
-                  {p.stockQty} {p.unit.toLowerCase()} left
-                </span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section className="card p-5 lg:col-span-2">
+          <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+            <div>
+              <h2 className="text-sm font-semibold dark:text-gray-100">Sales, last 14 days</h2>
+              {trends && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {bestDay && bestDay.sales > 0 ? `Best day: ${bestDay.label} (${money(bestDay.sales)})` : "No sales in this period yet"}
+                </p>
+              )}
+            </div>
+            {trends && (
+              <div className="text-right">
+                <div className="text-xl font-semibold tabular-nums dark:text-gray-100">{money(periodTotal)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">total</div>
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
-
-      {trends && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
-            <h2 className="text-sm font-semibold mb-3 dark:text-gray-100">Sales — last 14 days</h2>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={salesTrend}>
+          {!trends ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <AreaChart data={salesTrend} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#b91c1c" stopOpacity={0.35} />
+                  <linearGradient id="dashSales" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#b91c1c" stopOpacity={0.32} />
                     <stop offset="100%" stopColor="#b91c1c" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis dataKey="label" tick={tickStyle} />
-                <YAxis tick={tickStyle} width={40} />
-                <Tooltip formatter={(v) => money(v)} contentStyle={tooltipStyle} />
-                <Area type="monotone" dataKey="sales" stroke="#b91c1c" fill="url(#salesFill)" strokeWidth={2} />
+                <CartesianGrid vertical={false} stroke={chart.grid} />
+                <XAxis dataKey="label" tick={chart.tick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis tick={chart.tick} tickLine={false} axisLine={false} width={52} tickFormatter={moneyCompact} />
+                <Tooltip content={<ChartTooltip formatter={money} />} cursor={chart.cursor} />
+                <Area
+                  type="monotone"
+                  dataKey="sales"
+                  name="Sales"
+                  stroke="#b91c1c"
+                  strokeWidth={2.5}
+                  fill="url(#dashSales)"
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: chart.dark ? "#1f2937" : "#fff" }}
+                />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
+          )}
+        </section>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
-            <h2 className="text-sm font-semibold mb-3 dark:text-gray-100">Order Status Breakdown</h2>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={statusBreakdown} dataKey="count" nameKey="label" cx="50%" cy="50%" outerRadius={80} label={(d) => d.label}>
-                  {statusBreakdown.map((s, i) => (
-                    <Cell key={i} fill={STATUS_COLOR_HEX[s.status] || "#6b7280"} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+        <section className="card p-5">
+          <h2 className="text-sm font-semibold mb-4 dark:text-gray-100">Orders by status</h2>
+          {!trends ? <Skeleton className="h-44 w-full" /> : <DonutChart data={statusData} centerLabel="orders" emptyText="No orders yet." />}
+        </section>
+      </div>
 
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm lg:col-span-2">
-            <h2 className="text-sm font-semibold mb-3 dark:text-gray-100">Top Products by Revenue (last 14 days)</h2>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={trends.topProducts} layout="vertical" margin={{ left: 24 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis type="number" tick={tickStyle} />
-                <YAxis type="category" dataKey="name" tick={tickStyle} width={120} />
-                <Tooltip formatter={(v) => money(v)} contentStyle={tooltipStyle} />
-                <Bar dataKey="revenue" fill="#b91c1c" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section className="card p-5 lg:col-span-2">
+          <h2 className="text-sm font-semibold mb-4 dark:text-gray-100">Top products by revenue</h2>
+          {!trends ? (
+            <Skeleton className="h-40 w-full" />
+          ) : topProducts.length === 0 ? (
+            <EmptyState icon={ReportsIcon} title="No sales yet" text="Your best-selling products will show up here once orders come in." />
+          ) : (
+            <ul className="space-y-3.5">
+              {topProducts.map((p, i) => (
+                <li key={p.name}>
+                  <div className="flex items-baseline justify-between gap-3 text-sm mb-1.5">
+                    <span className="truncate font-medium text-gray-800 dark:text-gray-200">
+                      <span className="text-gray-400 dark:text-gray-500 mr-2 tabular-nums">{i + 1}</span>
+                      {p.name}
+                    </span>
+                    <span className="font-semibold tabular-nums dark:text-gray-100">{money(p.revenue)}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-700/60 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all duration-700"
+                      style={{ width: `${Math.max(4, (p.revenue / topMax) * 100)}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold dark:text-gray-100">Low stock</h2>
+            {data.lowStockProducts.length > 0 && (
+              <Link to="/inventory" className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">
+                View all
+              </Link>
+            )}
           </div>
-        </div>
-      )}
+          {data.lowStockProducts.length === 0 ? (
+            <EmptyState icon={CheckCircleIcon} title="Everything is stocked" text="Nothing is running low right now." />
+          ) : (
+            <ul className="space-y-3">
+              {data.lowStockProducts.map((p) => (
+                <li key={p.id} className="flex items-center gap-3">
+                  <span className="h-8 w-8 shrink-0 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
+                    <AlertIcon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate dark:text-gray-100">{p.name}</div>
+                    <div className="text-xs text-red-600 dark:text-red-400">
+                      {p.stockQty} {p.unit.toLowerCase()} left
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

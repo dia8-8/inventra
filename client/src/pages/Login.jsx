@@ -51,7 +51,7 @@ export default function Login({ mode = "login" }) {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 space-y-4 shadow-sm"
+          className="card p-6 space-y-4"
         >
           {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm px-3 py-2 rounded-lg">{error}</div>}
 
@@ -96,7 +96,7 @@ export default function Login({ mode = "login" }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm transition-colors disabled:opacity-60"
+            className="btn-primary w-full"
           >
             {submitting ? (isRegister ? "Creating account…" : "Signing in…") : isRegister ? "Create account" : "Sign in"}
           </button>

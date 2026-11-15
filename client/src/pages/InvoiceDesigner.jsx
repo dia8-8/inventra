@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/client";
+import { PageSkeleton } from "../components/ui";
 import InvoiceDocument from "../components/InvoiceDocument";
 import A4Sheet from "../components/A4Sheet";
 import { useNotify, errorMessage } from "../context/NotifyContext";
@@ -190,7 +191,7 @@ export default function InvoiceDesigner() {
 
   const dirty = useMemo(() => layout && JSON.stringify(layout) !== savedJson, [layout, savedJson]);
 
-  if (!layout || !settings) return <div className="text-gray-500 dark:text-gray-400">Loading…</div>;
+  if (!layout || !settings) return <PageSkeleton rows={4} />;
 
   const setBlock = (id, patch) => setLayout((l) => ({ ...l, blocks: l.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) }));
   const enabledColumns = layout.columns.filter((c) => c.enabled).length;
@@ -330,10 +331,10 @@ export default function InvoiceDesigner() {
         </div>
         <div className="flex items-center gap-2">
           {dirty && <span className="text-xs text-amber-600 dark:text-amber-400">Unsaved changes</span>}
-          <button type="button" onClick={resetToDefault} disabled={saving} className="text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+          <button type="button" onClick={resetToDefault} disabled={saving} className="btn-secondary disabled:opacity-50">
             Reset
           </button>
-          <button type="button" onClick={save} disabled={saving || !dirty} className="text-sm font-medium bg-brand-500 hover:bg-brand-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">
+          <button type="button" onClick={save} disabled={saving || !dirty} className="btn-primary disabled:opacity-50">
             {saving ? "Saving…" : "Save layout"}
           </button>
         </div>
@@ -341,7 +342,7 @@ export default function InvoiceDesigner() {
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] items-start">
         <div className="space-y-4 min-w-0">
-          <section className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 space-y-3">
+          <section className="card p-4 space-y-3">
             <h2 className="text-sm font-semibold dark:text-gray-100">Style</h2>
             <div>
               <div className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">Accent color</div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -81,12 +82,12 @@ function DriverView() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
         <div className="space-y-3">
           {orders.length === 0 && <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No deliveries assigned to you.</div>}
           {orders.map((o) => (
-            <div key={o.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
+            <div key={o.id} className="card p-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
                   <div className="font-semibold text-sm dark:text-gray-100">{o.orderNumber}</div>
@@ -113,7 +114,7 @@ function DriverView() {
                   <input
                     value={notes[o.id] || ""}
                     onChange={(e) => setNotes((prev) => ({ ...prev, [o.id]: e.target.value }))}
-                    className="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-1.5 text-xs"
+                    className="input flex-1 px-2 py-1.5 text-xs"
                     placeholder="e.g. left at back door"
                   />
                   <button onClick={() => saveNotes(o)} className="text-xs font-medium text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded-lg px-2.5 shrink-0">
@@ -184,12 +185,12 @@ function DispatchView() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
         <div className="space-y-3">
           {orders.length === 0 && <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No orders awaiting delivery.</div>}
           {orders.map((o) => (
-            <div key={o.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
+            <div key={o.id} className="card p-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
                   <div className="font-semibold text-sm dark:text-gray-100">{o.orderNumber}</div>
@@ -206,7 +207,7 @@ function DispatchView() {
                 <select
                   value={o.assignedDriverId || ""}
                   onChange={(e) => assignDriver(o, e.target.value)}
-                  className="text-xs border border-gray-200 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-1.5"
+                  className="input text-xs px-2 py-1.5"
                 >
                   <option value="">— Unassigned —</option>
                   {drivers.map((d) => (

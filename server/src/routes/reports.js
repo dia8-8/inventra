@@ -140,7 +140,7 @@ router.get("/top-products", async (req, res) => {
   for (const o of orders) {
     for (const item of o.items) {
       const key = item.productId;
-      const entry = map.get(key) || { name: item.product.name, quantity: 0, revenue: 0 };
+      const entry = map.get(key) || { name: item.product.name, category: item.product.category, quantity: 0, revenue: 0 };
       entry.quantity += Number(item.quantity);
       entry.revenue += Number(item.unitPrice) * Number(item.quantity);
       map.set(key, entry);

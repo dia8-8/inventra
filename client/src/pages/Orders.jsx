@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import { useNotify, errorMessage } from "../context/NotifyContext";
@@ -164,7 +165,7 @@ export default function Orders() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Orders</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{totalForFilter} total</p>
         </div>
-        <button onClick={() => setShowNew(true)} className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg">
+        <button onClick={() => setShowNew(true)} className="btn-primary">
           + New Order
         </button>
       </div>
@@ -173,7 +174,7 @@ export default function Orders() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by order number or customer…"
-        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+        className="input w-full"
       />
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -203,12 +204,12 @@ export default function Orders() {
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
         <div className="space-y-3">
           {orders.length === 0 && <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No orders found.</div>}
           {orders.map((o) => (
-            <div key={o.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
+            <div key={o.id} className="card p-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>
                   <div className="font-semibold text-sm dark:text-gray-100">{o.orderNumber}</div>
@@ -229,7 +230,7 @@ export default function Orders() {
                   <select
                     value={o.status}
                     onChange={(e) => handleStatusChange(o, e.target.value)}
-                    className="text-xs border border-gray-200 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-1"
+                    className="input text-xs px-2 py-1"
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
@@ -239,19 +240,19 @@ export default function Orders() {
                   </select>
                 )}
                 {o.status !== "CANCELLED" && o.paymentStatus !== "PAID" && (
-                  <button onClick={() => openPayment(o)} className="text-xs font-medium text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50 bg-brand-50 dark:bg-brand-900/20 rounded-lg px-3 py-1">
+                  <button onClick={() => openPayment(o)} className="btn-soft btn-sm">
                     Record Payment
                   </button>
                 )}
                 {o.status === "PENDING" && (
-                  <button onClick={() => setEditingOrder(o)} className="text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1">
+                  <button onClick={() => setEditingOrder(o)} className="btn-secondary btn-sm">
                     Edit
                   </button>
                 )}
                 {isAdmin && (
                   <button
                     onClick={() => handleDelete(o)}
-                    className="text-xs font-medium text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg px-3 py-1 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    className="btn-danger btn-sm"
                   >
                     Delete
                   </button>
@@ -260,7 +261,7 @@ export default function Orders() {
                   href={`/orders/${o.id}/invoice`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1"
+                  className="btn-secondary btn-sm"
                 >
                   Invoice
                 </a>
@@ -351,7 +352,7 @@ export default function Orders() {
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="input w-full"
                 />
               </div>
               <div>
@@ -360,13 +361,13 @@ export default function Orders() {
                   value={paymentNote}
                   onChange={(e) => setPaymentNote(e.target.value)}
                   placeholder="e.g. e-transfer, cash on delivery"
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="input w-full"
                 />
               </div>
               <button
                 type="submit"
                 disabled={submittingPayment}
-                className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm disabled:opacity-60"
+                className="btn-primary w-full"
               >
                 {submittingPayment ? "Saving…" : "Add Payment"}
               </button>
@@ -523,7 +524,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
             required
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
-            className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="input w-full"
           >
             <option value="">Select customer…</option>
             {customers.map((c) => (
@@ -548,7 +549,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
                     <select
                       value={l.productId}
                       onChange={(e) => selectProduct(i, e.target.value)}
-                      className="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-2 text-sm min-w-0"
+                      className="input flex-1 px-2 min-w-0"
                     >
                       <option value="">Select product…</option>
                       {products.map((prod) => (
@@ -564,7 +565,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
                       placeholder="Qty"
                       value={l.quantity}
                       onChange={(e) => updateLine(i, { quantity: e.target.value })}
-                      className="w-16 border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-2 text-sm"
+                      className="input w-16 px-2"
                     />
                     <button type="button" onClick={() => removeLine(i)} className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 shrink-0">
                       ✕
@@ -579,7 +580,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
                         min="0"
                         value={l.unitPrice}
                         onChange={(e) => updateLine(i, { unitPrice: e.target.value })}
-                        className="w-24 border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-1 text-sm"
+                        className="input w-24 px-2 py-1"
                       />
                       {hasCustomerPrice && !isCustomized && (
                         <span className="text-[10px] text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 rounded-full px-2 py-0.5 shrink-0">customer price</span>
@@ -589,7 +590,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
                           type="button"
                           onClick={() => saveCustomerPrice(i)}
                           disabled={savingPrice === i}
-                          className="text-[11px] font-medium text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50 bg-brand-50 dark:bg-brand-900/20 rounded-lg px-2 py-1 shrink-0 disabled:opacity-60"
+                          className="btn-soft btn-sm text-[11px] shrink-0"
                         >
                           {savingPrice === i ? "Saving…" : "Save as customer price"}
                         </button>
@@ -616,7 +617,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
               step="0.01"
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
           <div>
@@ -626,7 +627,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
               step="0.01"
               value={deliveryFee}
               onChange={(e) => setDeliveryFee(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
         </div>
@@ -637,7 +638,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+            className="input w-full"
           />
         </div>
 
@@ -655,7 +656,7 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm disabled:opacity-60"
+          className="btn-primary w-full"
         >
           {submitting ? "Saving…" : isEditing ? "Save Changes" : "Create Order"}
         </button>

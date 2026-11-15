@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import { useAuth } from "../context/AuthContext";
 import { COLOR_OPTIONS, COLOR_KEYS, productColor } from "../lib/categoryColor";
@@ -117,7 +118,7 @@ export default function Products() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Products</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{total} total</p>
         </div>
-        <button onClick={openNew} className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg">
+        <button onClick={openNew} className="btn-primary">
           + Add Product
         </button>
       </div>
@@ -126,13 +127,13 @@ export default function Products() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by name or category…"
-        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+        className="input w-full"
       />
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
           {products.length === 0 && <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">No products yet.</div>}
           {products.map((p) => {
             const low = Number(p.stockQty) <= Number(p.lowStockThreshold);
@@ -163,11 +164,11 @@ export default function Products() {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => openEdit(p)} className="text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <button onClick={() => openEdit(p)} className="btn-secondary btn-sm">
                     Edit
                   </button>
                   {isAdmin && (
-                    <button onClick={() => handleDelete(p)} className="text-xs font-medium text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/50 rounded-lg px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <button onClick={() => handleDelete(p)} className="btn-danger btn-sm">
                       Delete
                     </button>
                   )}
@@ -211,7 +212,7 @@ export default function Products() {
               <select
                 value={form.unit}
                 onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               >
                 {UNITS.map((u) => (
                   <option key={u} value={u}>
@@ -269,7 +270,7 @@ export default function Products() {
               <select
                 value={form.supplierId}
                 onChange={(e) => setForm({ ...form, supplierId: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               >
                 <option value="">— None —</option>
                 {suppliers.map((s) => (
@@ -279,7 +280,7 @@ export default function Products() {
                 ))}
               </select>
             </div>
-            <button type="submit" className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm">
+            <button type="submit" className="btn-primary w-full">
               Save
             </button>
           </form>
@@ -301,7 +302,7 @@ function Field({ label, value, onChange, required, type = "text", placeholder, d
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+        className="input w-full"
       />
     </div>
   );

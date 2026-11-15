@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/client";
+import { PageSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import { useAuth } from "../context/AuthContext";
 import { parseVariableWeightCode } from "../lib/variableWeightBarcode";
@@ -51,7 +52,7 @@ export default function Settings() {
     }
   }
 
-  if (!form) return <div className="text-gray-500 dark:text-gray-400">Loading…</div>;
+  if (!form) return <PageSkeleton rows={3} />;
 
   return (
     <div className="space-y-4 max-w-xl">
@@ -71,7 +72,7 @@ export default function Settings() {
         <span className="text-brand-500 text-lg" aria-hidden="true">→</span>
       </Link>
 
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm space-y-3">
+      <form onSubmit={handleSubmit} className="card p-4 space-y-3">
         {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm px-3 py-2 rounded-lg">{error}</div>}
         {saved && <div className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm px-3 py-2 rounded-lg">Settings saved</div>}
 
@@ -81,7 +82,7 @@ export default function Settings() {
             required
             value={form.companyName}
             onChange={(e) => setForm({ ...form, companyName: e.target.value })}
-            className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+            className="input w-full"
           />
         </div>
         <div>
@@ -89,7 +90,7 @@ export default function Settings() {
           <input
             value={form.address || ""}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+            className="input w-full"
           />
         </div>
         <div>
@@ -97,7 +98,7 @@ export default function Settings() {
           <input
             value={form.phone || ""}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+            className="input w-full"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -107,7 +108,7 @@ export default function Settings() {
               required
               value={form.invoicePrefix}
               onChange={(e) => setForm({ ...form, invoicePrefix: e.target.value })}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
           <div>
@@ -116,7 +117,7 @@ export default function Settings() {
               required
               value={form.currency}
               onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
         </div>
@@ -130,7 +131,7 @@ export default function Settings() {
               required
               value={form.defaultLowStockThreshold}
               onChange={(e) => setForm({ ...form, defaultLowStockThreshold: e.target.value })}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
           <div>
@@ -143,7 +144,7 @@ export default function Settings() {
               required
               value={form.taxRate}
               onChange={(e) => setForm({ ...form, taxRate: e.target.value })}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
         </div>
@@ -175,7 +176,7 @@ export default function Settings() {
                   <input
                     value={form.variableWeightPrefix}
                     onChange={(e) => setForm({ ...form, variableWeightPrefix: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm font-mono"
+                    className="input w-full font-mono"
                   />
                 </div>
                 <div>
@@ -183,7 +184,7 @@ export default function Settings() {
                   <select
                     value={form.variableWeightUnit}
                     onChange={(e) => setForm({ ...form, variableWeightUnit: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                    className="input w-full"
                   >
                     <option value="kg">kg</option>
                     <option value="lb">lb</option>
@@ -198,7 +199,7 @@ export default function Settings() {
                     min="0"
                     value={form.variableWeightItemStart}
                     onChange={(e) => setForm({ ...form, variableWeightItemStart: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                    className="input w-full"
                   />
                 </div>
                 <div>
@@ -208,7 +209,7 @@ export default function Settings() {
                     min="1"
                     value={form.variableWeightItemLength}
                     onChange={(e) => setForm({ ...form, variableWeightItemLength: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                    className="input w-full"
                   />
                 </div>
               </div>
@@ -220,7 +221,7 @@ export default function Settings() {
                     min="0"
                     value={form.variableWeightWeightStart}
                     onChange={(e) => setForm({ ...form, variableWeightWeightStart: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                    className="input w-full"
                   />
                 </div>
                 <div>
@@ -230,7 +231,7 @@ export default function Settings() {
                     min="1"
                     value={form.variableWeightWeightLength}
                     onChange={(e) => setForm({ ...form, variableWeightWeightLength: e.target.value })}
-                    className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                    className="input w-full"
                   />
                 </div>
               </div>
@@ -242,7 +243,7 @@ export default function Settings() {
                   max="6"
                   value={form.variableWeightDecimals}
                   onChange={(e) => setForm({ ...form, variableWeightDecimals: e.target.value })}
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                  className="input w-full"
                 />
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                   E.g. weight digits "00850" with 3 decimal places → {(850 / 1000).toFixed(3)} {form.variableWeightUnit}.
@@ -257,7 +258,7 @@ export default function Settings() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm disabled:opacity-60"
+          className="btn-primary w-full"
         >
           {saving ? "Saving…" : "Save Settings"}
         </button>
@@ -278,7 +279,7 @@ function VariableWeightTester({ settings }) {
         value={testCode}
         onChange={(e) => setTestCode(e.target.value)}
         placeholder="e.g. 2123450085003"
-        className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm font-mono"
+        className="input w-full font-mono"
       />
       {trimmed &&
         (parsed ? (

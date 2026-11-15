@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { Skeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 import { productColor } from "../lib/categoryColor";
@@ -71,9 +72,15 @@ export default function Inventory() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+      <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
         <div className="px-4 py-3 text-sm font-semibold bg-gray-50 dark:bg-gray-900/60 dark:text-gray-100">Current Stock</div>
-        {loading && <div className="p-4 text-sm text-gray-500 dark:text-gray-400">Loading…</div>}
+        {loading && (
+          <div className="p-4 space-y-3" role="status" aria-label="Loading">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-2/5" />
+            <Skeleton className="h-4 w-3/5" />
+          </div>
+        )}
         {!loading && products.length === 0 && <div className="p-4 text-sm text-gray-500 dark:text-gray-400">No products yet.</div>}
         {products.map((p) => {
           const low = Number(p.stockQty) <= Number(p.lowStockThreshold);
@@ -89,7 +96,7 @@ export default function Inventory() {
               </div>
               <button
                 onClick={() => openMovement(p)}
-                className="text-xs font-medium text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50 bg-brand-50 dark:bg-brand-900/20 rounded-lg px-3 py-1.5 shrink-0 w-20 text-center"
+                className="btn-soft btn-sm shrink-0 w-20 text-center"
               >
                 Adjust
               </button>
@@ -98,7 +105,7 @@ export default function Inventory() {
         })}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+      <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
         <div className="px-4 py-3 text-sm font-semibold bg-gray-50 dark:bg-gray-900/60 dark:text-gray-100">Recent Movements</div>
         {movements.length === 0 && <div className="p-4 text-sm text-gray-500 dark:text-gray-400">No movements recorded yet.</div>}
         {movements.slice(0, 30).map((m) => (
@@ -130,7 +137,7 @@ export default function Inventory() {
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               >
                 <option value="IN">Incoming stock (new delivery)</option>
                 <option value="ADJUSTMENT">Adjustment (correct a count, +/-)</option>
@@ -147,7 +154,7 @@ export default function Inventory() {
                 required
                 value={form.quantity}
                 onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               />
             </div>
             {form.type === "IN" && (
@@ -156,7 +163,7 @@ export default function Inventory() {
                 <select
                   value={form.supplierId}
                   onChange={(e) => setForm({ ...form, supplierId: e.target.value })}
-                  className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="input w-full"
                 >
                   <option value="">— None —</option>
                   {suppliers.map((s) => (
@@ -173,10 +180,10 @@ export default function Inventory() {
                 value={form.reason}
                 onChange={(e) => setForm({ ...form, reason: e.target.value })}
                 placeholder="e.g. Supplier delivery, spoilage, recount"
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               />
             </div>
-            <button type="submit" className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm">
+            <button type="submit" className="btn-primary w-full">
               Save Movement
             </button>
           </form>

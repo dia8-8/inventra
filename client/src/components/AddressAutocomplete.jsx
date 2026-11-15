@@ -42,7 +42,7 @@ export default function AddressAutocomplete({ label, value, onChange }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Address"
-        className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+        className="input w-full"
       />
     </div>
   );

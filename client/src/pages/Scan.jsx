@@ -204,7 +204,7 @@ export default function Scan() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm space-y-3">
+      <div className="card p-4 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Qty per scan</label>
@@ -214,7 +214,7 @@ export default function Scan() {
               step="0.01"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
           <div>
@@ -222,7 +222,7 @@ export default function Scan() {
             <select
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+              className="input w-full"
             >
               <option value="">— None —</option>
               {suppliers.map((s) => (
@@ -239,12 +239,12 @@ export default function Scan() {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Weekly supplier delivery"
-            className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+            className="input w-full"
           />
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm space-y-3">
+      <div className="card p-4 space-y-3">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Hardware scanner</label>
         <input
           ref={inputRef}
@@ -263,7 +263,7 @@ export default function Scan() {
           type="button"
           onClick={toggleCamera}
           disabled={cameraStarting}
-          className="text-sm font-medium text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50 bg-brand-50 dark:bg-brand-900/20 rounded-lg px-4 py-2 disabled:opacity-60"
+          className="btn-soft"
         >
           {cameraStarting ? "Requesting camera…" : cameraOn ? "Stop Camera" : "Use Camera Instead"}
         </button>
@@ -301,7 +301,7 @@ export default function Scan() {
             <select
               value={linkProductId}
               onChange={(e) => setLinkProductId(e.target.value)}
-              className="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-2 text-sm min-w-0"
+              className="input flex-1 px-2 min-w-0"
             >
               <option value="">Select a product to link…</option>
               {products.map((p) => (
@@ -314,7 +314,7 @@ export default function Scan() {
               type="button"
               onClick={linkAndAdd}
               disabled={!linkProductId || processing}
-              className="text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 rounded-lg px-4 py-2 disabled:opacity-50 shrink-0"
+              className="btn-primary disabled:opacity-50 shrink-0"
             >
               Link &amp; Add
             </button>
@@ -328,7 +328,7 @@ export default function Scan() {
       )}
 
       {recent.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
           <div className="px-4 py-3 text-sm font-semibold bg-gray-50 dark:bg-gray-900/60 dark:text-gray-100">This Session</div>
           {recent.map((r) => (
             <div key={r.id} className="p-3 flex items-center justify-between text-sm dark:text-gray-200">

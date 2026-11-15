@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
@@ -102,7 +103,7 @@ export default function Expenses() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Expenses</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{expenses.length} entries · {money(total)} total</p>
         </div>
-        <button onClick={openNew} className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg">
+        <button onClick={openNew} className="btn-primary">
           + Add Expense
         </button>
       </div>
@@ -111,7 +112,7 @@ export default function Expenses() {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="input"
         >
           <option value="">All categories</option>
           {CATEGORIES.map((c) => (
@@ -124,20 +125,20 @@ export default function Expenses() {
           type="date"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="input"
         />
         <input
           type="date"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="input"
         />
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
           {expenses.length === 0 && <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">No expenses recorded.</div>}
           {expenses.map((e) => (
             <div key={e.id} className="p-4 flex items-center justify-between gap-3">
@@ -156,7 +157,7 @@ export default function Expenses() {
                   Edit
                 </button>
                 {user?.role === "ADMIN" && (
-                  <button onClick={() => handleDelete(e)} className="text-xs font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 px-2 py-1">
+                  <button onClick={() => handleDelete(e)} className="btn-ghost btn-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                     Delete
                   </button>
                 )}
@@ -177,7 +178,7 @@ export default function Expenses() {
                 required
                 value={form.date}
                 onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               />
             </div>
             <div>
@@ -185,7 +186,7 @@ export default function Expenses() {
               <select
                 value={form.category}
                 onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -202,7 +203,7 @@ export default function Expenses() {
                 required
                 value={form.amount}
                 onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               />
             </div>
             <div>
@@ -210,10 +211,10 @@ export default function Expenses() {
               <input
                 value={form.note}
                 onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
               />
             </div>
-            <button type="submit" className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm">
+            <button type="submit" className="btn-primary w-full">
               Save
             </button>
           </form>

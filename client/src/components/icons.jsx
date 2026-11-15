@@ -166,3 +166,100 @@ export function ScanIcon(props) {
     </IconBase>
   );
 }
+
+export function CashIcon(props) {
+  return (
+    <IconBase {...props}>
+      <rect x="2.5" y="6" width="19" height="12" rx="2.5" />
+      <circle cx="12" cy="12" r="2.75" />
+      <path d="M6 9.5v.01M18 14.5v.01" />
+    </IconBase>
+  );
+}
+
+export function TrendUpIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 17l6-6 4 4 7-8" />
+      <path d="M15 7h5v5" />
+    </IconBase>
+  );
+}
+
+export function ClockIcon(props) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </IconBase>
+  );
+}
+
+export function CheckCircleIcon(props) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12.5l2.7 2.7L16 9.8" />
+    </IconBase>
+  );
+}
+
+export function AlertIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M10.3 3.9L2.4 17.5A2 2 0 004.1 20.5h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" />
+      <path d="M12 9.5v4M12 17h.01" />
+    </IconBase>
+  );
+}
+
+export function ReceiptIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
+      <path d="M9 8h6M9 12h6" />
+    </IconBase>
+  );
+}
+
+export function PlusIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </IconBase>
+  );
+}
+
+export function ArrowUpIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </IconBase>
+  );
+}
+
+export function ArrowDownIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 5v14M6 13l6 6 6-6" />
+    </IconBase>
+  );
+}
+
+export function LogoutIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M9 4H5.5A1.5 1.5 0 004 5.5v13A1.5 1.5 0 005.5 20H9" />
+      <path d="M16 8l4 4-4 4M20 12H9" />
+    </IconBase>
+  );
+}
+
+export function InboxIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 13l2.5-7.5A2 2 0 017.4 4h9.2a2 2 0 011.9 1.5L21 13" />
+      <path d="M3 13v5a2 2 0 002 2h14a2 2 0 002-2v-5h-5l-1.5 2.5h-5L8 13H3z" />
+    </IconBase>
+  );
+}

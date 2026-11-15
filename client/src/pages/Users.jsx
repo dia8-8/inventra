@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
@@ -92,15 +93,15 @@ export default function Users() {
             )}
           </p>
         </div>
-        <button onClick={() => setShowNew(true)} className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg">
+        <button onClick={() => setShowNew(true)} className="btn-primary">
           + Add User
         </button>
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
           {users.map((u) => (
             <div key={u.id} className="p-4 flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
@@ -119,7 +120,7 @@ export default function Users() {
                   value={u.role}
                   disabled={u.id === me.id}
                   onChange={(e) => changeRole(u, e.target.value)}
-                  className="text-xs border border-gray-200 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-2 py-1.5 disabled:opacity-50"
+                  className="input text-xs px-2 py-1.5 disabled:opacity-50"
                 >
                   {ROLES.filter((r) => r !== "DRIVER" || canAssignDrivers || u.role === "DRIVER").map((r) => (
                     <option key={r} value={r}>
@@ -141,7 +142,7 @@ export default function Users() {
                 <button
                   onClick={() => handleDelete(u)}
                   disabled={u.id === me.id}
-                  className="text-xs font-medium text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1.5 disabled:opacity-50"
+                  className="btn-ghost btn-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   Delete
                 </button>
@@ -161,7 +162,7 @@ export default function Users() {
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                className="input w-full"
               />
             </div>
             <div>
@@ -171,7 +172,7 @@ export default function Users() {
                 required
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                className="input w-full"
               />
             </div>
             <div>
@@ -182,7 +183,7 @@ export default function Users() {
                 minLength={6}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                className="input w-full"
               />
             </div>
             <div>
@@ -190,7 +191,7 @@ export default function Users() {
               <select
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm"
+                className="input w-full"
               >
                 {ROLES.filter((r) => r !== "DRIVER" || canAssignDrivers).map((r) => (
                   <option key={r} value={r}>
@@ -199,7 +200,7 @@ export default function Users() {
                 ))}
               </select>
             </div>
-            <button type="submit" className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm">
+            <button type="submit" className="btn-primary w-full">
               Create User
             </button>
           </form>

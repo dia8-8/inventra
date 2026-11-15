@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 
 const ENTITY_TYPES = ["Order", "Payment", "Customer", "Product", "Supplier", "Expense", "User", "ActivityLog"];
@@ -111,7 +112,7 @@ export default function ActivityLog() {
         {total > 0 && (
           <button
             onClick={deleteMatching}
-            className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/60 rounded-lg px-3 py-2 hover:bg-red-50 dark:hover:bg-red-900/20"
+            className="btn-danger"
           >
             {filtered ? `Delete filtered (${total})` : "Delete all"}
           </button>
@@ -125,7 +126,7 @@ export default function ActivityLog() {
             setPage(0);
             setEntityType(e.target.value);
           }}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="input"
         >
           <option value="">All entity types</option>
           {ENTITY_TYPES.map((t) => (
@@ -141,7 +142,7 @@ export default function ActivityLog() {
             setPage(0);
             setFrom(e.target.value);
           }}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="input"
         />
         <input
           type="date"
@@ -150,14 +151,14 @@ export default function ActivityLog() {
             setPage(0);
             setTo(e.target.value);
           }}
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="input"
         />
       </div>
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
           {logs.length === 0 && <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">No activity recorded.</div>}
           {logs.map((l) => (
             <div key={l.id} className="p-4 flex items-start justify-between gap-3 flex-wrap">

@@ -22,14 +22,14 @@ export default function LicenseBlocked() {
           {contactEmail && (
             <a
               href={`mailto:${contactEmail}?subject=License%20for%20${encodeURIComponent(user?.companyName || "")}`}
-              className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
+              className="btn-primary"
             >
               Contact us to renew
             </a>
           )}
           <button
             onClick={() => refresh().catch(() => {})}
-            className="text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 px-5 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="btn-secondary"
           >
             I've renewed — check again
           </button>

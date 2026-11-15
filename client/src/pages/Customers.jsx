@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 import AddressAutocomplete from "../components/AddressAutocomplete";
@@ -90,7 +91,7 @@ export default function Customers() {
           <h1 className="text-xl font-semibold dark:text-gray-100">Customers</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">{customers.length} total</p>
         </div>
-        <button onClick={openNew} className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2.5 rounded-lg">
+        <button onClick={openNew} className="btn-primary">
           + Add Customer
         </button>
       </div>
@@ -99,13 +100,13 @@ export default function Customers() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by name, business, or phone…"
-        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+        className="input w-full"
       />
 
       {loading ? (
-        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading…</div>
+        <ListSkeleton />
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
           {customers.length === 0 && <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">No customers yet.</div>}
           {customers.map((c) => (
             <div key={c.id} className="p-4 flex items-center justify-between gap-3">
@@ -126,7 +127,7 @@ export default function Customers() {
                 <button onClick={() => openEdit(c)} className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1">
                   Edit
                 </button>
-                <button onClick={() => handleDelete(c)} className="text-xs font-medium text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 px-2 py-1">
+                <button onClick={() => handleDelete(c)} className="btn-ghost btn-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                   Delete
                 </button>
               </div>
@@ -148,11 +149,11 @@ export default function Customers() {
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="input w-full"
                 rows={2}
               />
             </div>
-            <button type="submit" className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm">
+            <button type="submit" className="btn-primary w-full">
               Save
             </button>
           </form>
@@ -201,7 +202,7 @@ function Field({ label, value, onChange, required }) {
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+        className="input w-full"
       />
     </div>
   );

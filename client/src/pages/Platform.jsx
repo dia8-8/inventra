@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
+import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import Modal from "../components/Modal";
 
@@ -93,7 +94,7 @@ export default function Platform() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((s) => (
-          <div key={s.label} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
+          <div key={s.label} className="card p-4">
             <div className="text-xs font-medium text-gray-500 dark:text-gray-400">{s.label}</div>
             <div className="text-2xl font-semibold dark:text-gray-100">{s.value}</div>
           </div>
@@ -101,9 +102,9 @@ export default function Platform() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+        <ListSkeleton />
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+        <div className="card divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
           {tenants.length === 0 && <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">No clients yet.</div>}
           {tenants.map((t) => {
             const st = statusOf(t.license);
@@ -142,7 +143,7 @@ export default function Platform() {
                 </div>
                 <button
                   onClick={() => openEdit(t)}
-                  className="text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="btn-secondary btn-sm"
                 >
                   Manage
                 </button>
@@ -220,7 +221,7 @@ export default function Platform() {
                   type="button"
                   disabled={saving}
                   onClick={() => save({ extendDays: d, expiresAt: undefined })}
-                  className="text-xs font-medium text-brand-600 dark:text-brand-400 border border-brand-100 dark:border-brand-900/50 bg-brand-50 dark:bg-brand-900/20 rounded-lg px-3 py-1.5 disabled:opacity-60"
+                  className="btn-soft btn-sm"
                 >
                   +{d} days
                 </button>
@@ -231,7 +232,7 @@ export default function Platform() {
               type="button"
               disabled={saving}
               onClick={() => save()}
-              className="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-lg py-2.5 text-sm disabled:opacity-60"
+              className="btn-primary w-full"
             >
               {saving ? "Saving…" : "Save license"}
             </button>
