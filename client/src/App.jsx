@@ -16,6 +16,7 @@ import Scan from "./pages/Scan";
 import Orders from "./pages/Orders";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import InvoiceDesigner from "./pages/InvoiceDesigner";
 import Suppliers from "./pages/Suppliers";
 import Expenses from "./pages/Expenses";
 import Deliveries from "./pages/Deliveries";
@@ -115,6 +116,7 @@ export default function App() {
               />
               <Route path="/users" element={<AdminRoute><Users /></AdminRoute>} />
               <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+              <Route path="/settings/invoice" element={<AdminRoute><InvoiceDesigner /></AdminRoute>} />
               <Route
                 path="/activity-log"
                 element={

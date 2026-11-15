@@ -294,6 +294,9 @@ model Setting {
   taxRate                  Decimal  @default(0) @db.Decimal(5, 4)
   updatedAt                DateTime @updatedAt
 
+  // Admin-designed invoice layout (blocks, order, columns, colors). null = built-in default.
+  invoiceLayout Json?
+
   // Variable-weight barcode parsing (scale-printed labels encoding an item
   // code + weight in one barcode, common for meat/deli). Positions are
   // 0-based digit offsets into the scanned code.

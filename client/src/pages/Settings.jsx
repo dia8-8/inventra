@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../api/client";
 import { useNotify, errorMessage } from "../context/NotifyContext";
+import { useAuth } from "../context/AuthContext";
 import { parseVariableWeightCode } from "../lib/variableWeightBarcode";
 
 export default function Settings() {
   const notify = useNotify();
+  const { refresh } = useAuth();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -40,6 +43,7 @@ export default function Settings() {
       setForm(data);
       setSaved(true);
       notify.success("Settings saved");
+      refresh().catch(() => {}); // pick up a renamed company in the navbar
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
     } finally {
@@ -55,6 +59,17 @@ export default function Settings() {
         <h1 className="text-xl font-semibold dark:text-gray-100">Settings</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">Company info and invoicing defaults</p>
       </div>
+
+      <Link
+        to="/settings/invoice"
+        className="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm hover:border-brand-400 transition"
+      >
+        <div>
+          <div className="text-sm font-semibold dark:text-gray-100">Invoice layout</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">Design your invoice: drag sections into place, add a logo, pick colors</div>
+        </div>
+        <span className="text-brand-500 text-lg" aria-hidden="true">→</span>
+      </Link>
 
       <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm space-y-3">
         {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm px-3 py-2 rounded-lg">{error}</div>}

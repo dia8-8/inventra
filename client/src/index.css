@@ -29,3 +29,27 @@ gmp-place-autocomplete {
   color: #f3f4f6 !important;
   border: 1px solid #4b5563 !important;
 }
+
+/* A4 invoice sheet: 210 x 297 mm with 15 mm margins. Shrunk to fit on screen, real size in print. */
+.a4-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 15mm;
+  box-sizing: border-box;
+  zoom: var(--a4-zoom, 1);
+}
+
+@media print {
+  .a4-sheet {
+    zoom: 1;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+    --tw-ring-shadow: 0 0 #0000;
+  }
+  /* keep a table row from splitting across two pages */
+  .a4-sheet tr {
+    break-inside: avoid;
+  }
+}

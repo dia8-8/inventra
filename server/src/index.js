@@ -25,6 +25,8 @@ const app = express();
 
 const allowedOrigins = (process.env.CLIENT_ORIGIN || "http://localhost:5173").split(",").map((o) => o.trim());
 app.use(cors({ origin: allowedOrigins }));
+// Settings carry the invoice layout, which may include a small logo as a data URL
+app.use("/api/settings", express.json({ limit: "512kb" }));
 app.use(express.json());
 app.use(morgan("dev"));
 
@@ -45,6 +47,9 @@ app.use("/api/activity-log", activityLogRoutes);
 app.use("/api/platform", platformRoutes);
 
 app.use((err, req, res, next) => {
+  if (err.status === 413 || err.type === "entity.too.large") {
+    return res.status(413).json({ error: "That is too large to save. Try a smaller image." });
+  }
   console.error(err);
   res.status(500).json({ error: "Internal server error" });
 });
