@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import BrandMark from "../components/BrandMark";
 
 const inputClass =
   "w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500";
@@ -37,15 +38,12 @@ export default function Login({ mode = "login" }) {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link
-            to="/"
-            className="inline-flex w-14 h-14 rounded-2xl bg-brand-500 text-white items-center justify-center font-bold text-xl mb-3"
-          >
-            VC
+          <Link to="/" aria-label="Inventra home" className="inline-flex mb-3">
+            <BrandMark className="w-14 h-14" />
           </Link>
           <h1 className="text-xl font-semibold dark:text-gray-100">{isRegister ? "Start your free trial" : "Welcome back"}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {isRegister ? "14 days, full features, no card required" : "Sign in to your Viandes Corona account"}
+            {isRegister ? "14 days, full features, no card required" : "Sign in to your Inventra account"}
           </p>
         </div>
 

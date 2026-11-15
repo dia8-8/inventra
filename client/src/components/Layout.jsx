@@ -102,7 +102,7 @@ export default function Layout() {
   const mobileBottomItems = isSuperAdmin ? PLATFORM_NAV_ITEMS : isDriver ? DRIVER_NAV_ITEMS : MOBILE_NAV_ITEMS;
   const mobileExtraItems = isDriver || isSuperAdmin ? [] : allowed(NAV_ITEMS).filter((i) => !MOBILE_NAV_ITEMS.some((m) => m.to === i.to));
   const adminMobileItems = user?.role === "ADMIN" ? allowed(ADMIN_NAV_ITEMS) : [];
-  const brandName = isSuperAdmin ? "Platform" : user?.companyName || "Viandes Corona";
+  const brandName = isSuperAdmin ? "Platform" : user?.companyName || "Inventra";
   const brandInitials = initialsOf(brandName);
   const userInitials = initialsOf(user?.name);
 
@@ -112,7 +112,7 @@ export default function Layout() {
     .sort((a, b) => b.to.length - a.to.length)[0];
 
   useEffect(() => {
-    document.title = `${brandName} — Management`;
+    document.title = `${brandName} · Inventra`;
   }, [brandName]);
 
   const showLicenseBanner =

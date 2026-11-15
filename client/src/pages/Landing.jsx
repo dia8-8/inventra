@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
+import BrandMark from "../components/BrandMark";
 import {
   OrdersIcon,
   InventoryIcon,
@@ -383,8 +384,8 @@ export default function Landing() {
       >
         <div className="max-w-6xl mx-auto h-16 px-4 sm:px-6 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="w-9 h-9 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold">VC</span>
-            <span className="hidden sm:inline font-semibold whitespace-nowrap">Viandes Corona</span>
+            <BrandMark />
+            <span className="hidden sm:inline font-semibold whitespace-nowrap">Inventra</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-gray-600 dark:text-gray-300">
             <a href="#features" className="hover:text-gray-900 dark:hover:text-white">Features</a>
@@ -635,7 +636,7 @@ export default function Landing() {
 
       <footer className="border-t border-gray-100 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <span>© {new Date().getFullYear()} Viandes Corona. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} Inventra. All rights reserved.</span>
           <span className="flex items-center gap-4">
             <Link to="/login" className="hover:underline">Log in</Link>
             <Link to="/register" className="hover:underline">Register</Link>

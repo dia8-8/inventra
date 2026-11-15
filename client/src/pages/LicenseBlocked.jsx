@@ -1,4 +1,5 @@
 import { useAuth } from "../context/AuthContext";
+import BrandMark from "../components/BrandMark";
 
 // Shown instead of the app when a client's license is expired or suspended.
 export default function LicenseBlocked() {
@@ -9,7 +10,7 @@ export default function LicenseBlocked() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="w-full max-w-md text-center">
-        <span className="inline-flex w-14 h-14 rounded-2xl bg-brand-500 text-white items-center justify-center font-bold text-xl mb-4">VC</span>
+        <BrandMark className="w-14 h-14 mb-4" />
         <h1 className="text-xl font-semibold dark:text-gray-100">{expired ? "Your license has expired" : "Your account is suspended"}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
           {expired
