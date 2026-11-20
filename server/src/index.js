@@ -19,6 +19,7 @@ const expenseRoutes = require("./routes/expenses");
 const reportRoutes = require("./routes/reports");
 const activityLogRoutes = require("./routes/activityLog");
 const platformRoutes = require("./routes/platform");
+const taxRoutes = require("./routes/taxes");
 const { ensureSuperAdmin } = require("./lib/bootstrap");
 
 const app = express();
@@ -47,6 +48,7 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/activity-log", activityLogRoutes);
 app.use("/api/platform", platformRoutes);
+app.use("/api/taxes", taxRoutes);
 
 app.use((err, req, res, next) => {
   if (err.status === 413 || err.type === "entity.too.large") {

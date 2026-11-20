@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../api/client";
 import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
+import { splitTaxIncluded } from "../lib/tax";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 
@@ -16,7 +17,7 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const emptyForm = { date: todayStr(), category: "FUEL", amount: "", note: "" };
+const emptyForm = { date: todayStr(), category: "FUEL", amount: "", note: "", taxes: {} };
 
 export default function Expenses() {
   const notify = useNotify();
@@ -29,6 +30,15 @@ export default function Expenses() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
+  const [taxList, setTaxList] = useState([]);
+
+  useEffect(() => {
+    if (!can("expenses.create") && !can("expenses.edit")) return;
+    api
+      .get("/taxes")
+      .then(({ data }) => setTaxList(data))
+      .catch(() => {});
+  }, []);
 
   function load() {
     setLoading(true);
@@ -56,6 +66,7 @@ export default function Expenses() {
       category: e.category,
       amount: e.amount,
       note: e.note || "",
+      taxes: Object.fromEntries((e.taxes || []).map((t) => [t.name, String(t.amount)])),
     });
     setError("");
     setEditing(e);
@@ -64,10 +75,22 @@ export default function Expenses() {
   async function handleSubmit(ev) {
     ev.preventDefault();
     try {
+      // taxes the person filled in; leaving them all blank means "not recorded"
+      const names = [...taxList.map((t) => t.name), ...Object.keys(form.taxes).filter((k) => !taxList.some((t) => t.name === k))];
+      const filledIn = names.some((n) => form.taxes[n] !== undefined && form.taxes[n] !== "");
+      const payload = {
+        date: form.date,
+        category: form.category,
+        amount: form.amount,
+        note: form.note,
+        ...(taxList.length || Object.keys(form.taxes).length
+          ? { taxes: filledIn ? names.map((n) => ({ name: n, amount: Number(form.taxes[n] || 0) })) : null }
+          : {}),
+      };
       if (editing?.id) {
-        await api.patch(`/expenses/${editing.id}`, form);
+        await api.patch(`/expenses/${editing.id}`, payload);
       } else {
-        await api.post("/expenses", form);
+        await api.post("/expenses", payload);
       }
       notify.success(editing?.id ? "Expense updated" : "Expense added");
       setEditing(null);
@@ -153,7 +176,10 @@ export default function Expenses() {
                   {new Date(e.date).toLocaleDateString(undefined, { timeZone: "UTC" })} · {e.createdBy?.name || "System"}
                 </div>
               </div>
-              <div className="font-semibold text-sm shrink-0 dark:text-gray-100">{money(e.amount)}</div>
+              <div className="text-right shrink-0">
+                <div className="font-semibold text-sm dark:text-gray-100">{money(e.amount)}</div>
+                {Number(e.taxTotal) > 0 && <div className="text-[11px] text-gray-400 dark:text-gray-500">incl. {money(e.taxTotal)} tax</div>}
+              </div>
               <div className="flex gap-1 shrink-0">
                 {can("expenses.edit") && (
                   <button onClick={() => openEdit(e)} className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1">
@@ -210,6 +236,44 @@ export default function Expenses() {
                 className="input w-full"
               />
             </div>
+            {taxList.length > 0 && (
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Tax included in this amount</span>
+                  <button
+                    type="button"
+                    disabled={!Number(form.amount)}
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        taxes: Object.fromEntries(splitTaxIncluded(prev.amount, taxList).map((t) => [t.name, String(t.amount)])),
+                      }))
+                    }
+                    className="btn-ghost btn-sm text-brand-600 dark:text-brand-400"
+                  >
+                    Work it out
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {taxList.map((t) => (
+                    <label key={t.id} className="block text-xs text-gray-600 dark:text-gray-400">
+                      {t.name} paid
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={form.taxes[t.name] ?? ""}
+                        onChange={(e) => setForm((prev) => ({ ...prev, taxes: { ...prev.taxes, [t.name]: e.target.value } }))}
+                        className="input w-full mt-1"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  The tax shown on the receipt is part of the amount above. It is what you can claim back. "Work it out" estimates it from the total using your rates; leave blank if you don't know.
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Note</label>
               <input

@@ -5,6 +5,7 @@ import { ListSkeleton } from "../components/ui";
 import Modal from "../components/Modal";
 import { useAuth } from "../context/AuthContext";
 import { useNotify, errorMessage } from "../context/NotifyContext";
+import { computeOrderTaxes, formatRate, round2 } from "../lib/tax";
 
 const PAGE_SIZE = 10;
 
@@ -439,6 +440,15 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
 
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
+  // the company's taxes, to show the tax on the order as it is built (the server works out the real figure)
+  const [taxList, setTaxList] = useState([]);
+  useEffect(() => {
+    api
+      .get("/taxes")
+      .then(({ data }) => setTaxList(data))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!customerId) {
       setCustomerPrices(new Map());
@@ -460,7 +470,16 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
     const unitPrice = l.unitPrice !== "" ? Number(l.unitPrice) : priceFor(l.productId);
     return sum + unitPrice * Number(l.quantity);
   }, 0);
-  const total = Math.max(0, subtotal - Number(discount || 0)) + Number(deliveryFee || 0);
+  const pricedLines = lines
+    .filter((l) => l.productId && l.quantity)
+    .map((l) => ({
+      lineTotal: (l.unitPrice !== "" ? Number(l.unitPrice) : priceFor(l.productId)) * Number(l.quantity),
+      taxable: productMap.get(l.productId)?.taxable !== false,
+    }));
+  const taxInfo = taxList.length
+    ? computeOrderTaxes({ lines: pricedLines, discount: Number(discount || 0), deliveryFee: Number(deliveryFee || 0), taxes: taxList })
+    : { taxes: [], taxTotal: 0 };
+  const total = round2(Math.max(0, subtotal - Number(discount || 0)) + Number(deliveryFee || 0) + taxInfo.taxTotal);
 
   function updateLine(i, patch) {
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -653,6 +672,16 @@ function NewOrderModal({ customers, products, order, onClose, onCreated }) {
             <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
             <span>{money(subtotal)}</span>
           </div>
+          {taxInfo.taxes
+            .filter((t) => t.amount > 0)
+            .map((t) => (
+              <div key={t.name} className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">
+                  {t.name} ({formatRate(t.rate)})
+                </span>
+                <span>{money(t.amount)}</span>
+              </div>
+            ))}
           <div className="flex justify-between font-semibold text-base pt-1 border-t border-gray-200 dark:border-gray-700">
             <span>Total</span>
             <span>{money(total)}</span>

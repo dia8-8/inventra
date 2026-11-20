@@ -4,6 +4,8 @@ const prisma = require("../lib/prisma");
 const { requireAuth, requirePermission, requireAnyPermission, requireFeature } = require("../middleware/auth");
 const { getTenantSettings } = require("../lib/settings");
 const { logActivity } = require("../lib/activityLog");
+const { Prisma } = require("@prisma/client");
+const { computeOrderTaxes, round2 } = require("../lib/tax");
 
 const router = express.Router();
 router.use(requireAuth);
@@ -103,6 +105,21 @@ const createSchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
+// Works out the totals of an order: subtotal, the tax charged under the company's current
+// tax list, and the final total. With no taxes set up, `taxes` is null and nothing is added.
+async function priceOrder({ lineItems, productMap, discount, deliveryFee }) {
+  const subtotal = lineItems.reduce((sum, li) => sum + li.lineTotal, 0);
+  const taxList = await prisma.tax.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
+  let taxes = null;
+  let taxTotal = 0;
+  if (taxList.length) {
+    const lines = lineItems.map((li) => ({ lineTotal: li.lineTotal, taxable: productMap.get(li.productId)?.taxable !== false }));
+    ({ taxes, taxTotal } = computeOrderTaxes({ lines, discount, deliveryFee, taxes: taxList }));
+  }
+  const total = round2(Math.max(0, subtotal - discount) + deliveryFee + taxTotal);
+  return { subtotal, total, taxes, taxTotal };
+}
+
 // Stock is deducted immediately when an order is created (not cancelled), since a small
 // distributor needs to prevent overselling against on-hand inventory rather than only
 // at delivery time. Cancelling an order restocks it.
@@ -133,8 +150,7 @@ router.post("/", requirePermission("orders.create"), async (req, res) => {
     return { productId: item.productId, quantity: item.quantity, unitPrice, lineTotal };
   });
 
-  const subtotal = lineItems.reduce((sum, li) => sum + li.lineTotal, 0);
-  const total = Math.max(0, subtotal - discount) + deliveryFee;
+  const { subtotal, total, taxes: orderTaxes, taxTotal } = await priceOrder({ lineItems, productMap, discount, deliveryFee });
 
   const settings = await getTenantSettings();
   const orderCount = await prisma.order.count();
@@ -148,6 +164,8 @@ router.post("/", requirePermission("orders.create"), async (req, res) => {
         discount,
         deliveryFee,
         subtotal,
+        taxTotal,
+        ...(orderTaxes ? { taxes: orderTaxes } : {}),
         total,
         notes,
         createdById: req.user.id,
@@ -223,8 +241,7 @@ router.patch("/:id", requirePermission("orders.edit"), async (req, res) => {
     const lineTotal = unitPrice * item.quantity;
     return { productId: item.productId, quantity: item.quantity, unitPrice, lineTotal };
   });
-  const subtotal = lineItems.reduce((sum, li) => sum + li.lineTotal, 0);
-  const total = Math.max(0, subtotal - discount) + deliveryFee;
+  const { subtotal, total, taxes: orderTaxes, taxTotal } = await priceOrder({ lineItems, productMap, discount, deliveryFee });
 
   const updated = await prisma.$transaction(async (tx) => {
     for (const oldItem of order.items) {
@@ -245,7 +262,7 @@ router.patch("/:id", requirePermission("orders.edit"), async (req, res) => {
 
     const result = await tx.order.update({
       where: { id: order.id },
-      data: { customerId, discount, deliveryFee, subtotal, total, notes, items: { create: lineItems } },
+      data: { customerId, discount, deliveryFee, subtotal, taxTotal, taxes: orderTaxes ?? Prisma.DbNull, total, notes, items: { create: lineItems } },
       include: { items: { include: { product: true } }, customer: true },
     });
 

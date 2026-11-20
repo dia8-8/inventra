@@ -77,6 +77,7 @@ const productSchema = z.object({
   stockQty: z.coerce.number().nonnegative().optional(),
   lowStockThreshold: z.coerce.number().nonnegative().optional(),
   active: z.boolean().optional(),
+  taxable: z.boolean().optional(),
   color: z
     .string()
     .optional()

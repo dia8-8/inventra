@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../api/client";
 import { PageSkeleton } from "../components/ui";
 import AddressAutocomplete from "../components/AddressAutocomplete";
+import TaxSettings from "../components/TaxSettings";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import { useAuth } from "../context/AuthContext";
 import { parseVariableWeightCode } from "../lib/variableWeightBarcode";
@@ -33,7 +34,6 @@ export default function Settings() {
         invoicePrefix: form.invoicePrefix,
         currency: form.currency,
         defaultLowStockThreshold: form.defaultLowStockThreshold,
-        taxRate: form.taxRate,
         variableWeightEnabled: form.variableWeightEnabled,
         variableWeightPrefix: form.variableWeightPrefix,
         variableWeightItemStart: form.variableWeightItemStart,
@@ -144,19 +144,6 @@ export default function Settings() {
               required
               value={form.defaultLowStockThreshold}
               onChange={(e) => setForm({ ...form, defaultLowStockThreshold: e.target.value })}
-              className="input w-full"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tax rate (0–1)</label>
-            <input
-              type="number"
-              min="0"
-              max="1"
-              step="0.0001"
-              required
-              value={form.taxRate}
-              onChange={(e) => setForm({ ...form, taxRate: e.target.value })}
               className="input w-full"
             />
           </div>
@@ -277,6 +264,8 @@ export default function Settings() {
         </button>
       </form>
       )}
+
+      {can("settings.edit") && <TaxSettings />}
     </div>
   );
 }

@@ -26,6 +26,7 @@ import Suppliers from "./pages/Suppliers";
 import Expenses from "./pages/Expenses";
 import Deliveries from "./pages/Deliveries";
 import Reports from "./pages/Reports";
+import Taxes from "./pages/Taxes";
 import ActivityLog from "./pages/ActivityLog";
 import InvoicePrint from "./pages/InvoicePrint";
 
@@ -123,6 +124,16 @@ export default function App() {
                   <PermissionRoute perm="reports.view">
                     <FeatureRoute feature="reports">
                       <Reports />
+                    </FeatureRoute>
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/taxes"
+                element={
+                  <PermissionRoute perm="taxes.view">
+                    <FeatureRoute feature="reports">
+                      <Taxes />
                     </FeatureRoute>
                   </PermissionRoute>
                 }

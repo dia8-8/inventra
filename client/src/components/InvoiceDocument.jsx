@@ -1,3 +1,4 @@
+import { formatRate } from "../lib/tax";
 import { BLOCKS, COLUMNS, FONTS, SPACINGS, TEXT_SIZES, normalizeLayout, toRows } from "../lib/invoiceLayout";
 
 const STATUS_LABELS = {
@@ -140,6 +141,9 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order, se
 
       case "totals": {
         const balanceDue = Number(order.total) - Number(order.amountPaid);
+        // the tax charged on this order as it was issued; registration numbers belong on a taxed invoice
+        const taxLines = (Array.isArray(order.taxes) ? order.taxes : []).filter((t) => Number(t.amount) > 0);
+        const taxNumbers = taxLines.filter((t) => t.number).map((t) => `${t.name} no. ${t.number}`);
         return (
           <div className="space-y-1 text-sm">
             <div className="flex justify-between gap-4">
@@ -158,6 +162,14 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order, se
                 <span>{money(order.deliveryFee)}</span>
               </div>
             )}
+            {taxLines.map((t) => (
+              <div key={t.name} className="flex justify-between gap-4">
+                <span className="text-gray-500">
+                  {t.name} ({formatRate(t.rate)})
+                </span>
+                <span>{money(t.amount)}</span>
+              </div>
+            ))}
             <div className="flex justify-between gap-4 font-semibold text-base pt-1" style={{ borderTop: `2px solid ${accent}` }}>
               <span>Total</span>
               <span>{money(order.total)}</span>
@@ -174,6 +186,7 @@ export default function InvoiceDocument({ layout: rawLayout, settings, order, se
                 </div>
               </>
             )}
+            {taxNumbers.length > 0 && <div className="pt-2 text-[11px] text-gray-400">{taxNumbers.join(" · ")}</div>}
           </div>
         );
       }

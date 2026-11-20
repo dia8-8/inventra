@@ -14,6 +14,7 @@ const TENANT_MODELS = new Set([
   "Customer",
   "Product",
   "ProductBarcode",
+  "Tax",
   "StockMovement",
   "Order",
   "ActivityLog",

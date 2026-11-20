@@ -12,6 +12,7 @@ import {
   ExpensesIcon,
   DeliveriesIcon,
   ReportsIcon,
+  ReceiptIcon,
   UsersAdminIcon,
   SettingsIcon,
   ActivityIcon,
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { to: "/suppliers", label: "Suppliers", icon: SuppliersIcon, group: "Stock", perm: "suppliers.view" },
   { to: "/expenses", label: "Expenses", icon: ExpensesIcon, group: "Finance", perm: "expenses.view" },
   { to: "/reports", label: "Reports", icon: ReportsIcon, feature: "reports", group: "Finance", perm: "reports.view" },
+  { to: "/taxes", label: "Taxes", icon: ReceiptIcon, feature: "reports", group: "Finance", perm: "taxes.view" },
 ];
 
 const ADMIN_NAV_ITEMS = [
@@ -124,7 +126,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-col w-64 bg-white dark:bg-gray-800/95 border-r border-gray-200/80 dark:border-gray-700/70 fixed inset-y-0 left-0 z-30">
+      <aside className="hidden md:flex md:flex-col print:!hidden w-64 bg-white dark:bg-gray-800/95 border-r border-gray-200/80 dark:border-gray-700/70 fixed inset-y-0 left-0 z-30">
         <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-200/80 dark:border-gray-700/70">
           <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-brand-500/30">
             {brandInitials}
@@ -188,9 +190,9 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col md:ml-64 min-w-0">
+      <div className="flex-1 flex flex-col md:ml-64 print:!ml-0 min-w-0">
         {/* Topbar */}
-        <header className="h-16 bg-white/80 dark:bg-gray-900/70 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/60 px-4 md:px-6 sticky top-0 z-20">
+        <header className="print:hidden h-16 bg-white/80 dark:bg-gray-900/70 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-700/60 px-4 md:px-6 sticky top-0 z-20">
           <div className="h-full max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5 md:hidden">
             <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-white flex items-center justify-center font-bold text-xs">{brandInitials}</span>
@@ -281,7 +283,7 @@ export default function Layout() {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-t border-gray-200/80 dark:border-gray-700/70 flex justify-around py-1.5 z-30 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+      <nav className="md:hidden print:!hidden fixed bottom-0 inset-x-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-t border-gray-200/80 dark:border-gray-700/70 flex justify-around py-1.5 z-30 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
         {mobileBottomItems.map((item) => (
           <NavLink
             key={item.to}

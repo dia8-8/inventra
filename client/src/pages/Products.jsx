@@ -13,7 +13,7 @@ function money(n) {
   return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(n || 0);
 }
 
-const emptyForm = { name: "", category: "", unit: "KG", costPrice: "", sellingPrice: "", stockQty: "", lowStockThreshold: "10", supplierId: "", barcode: "", barcodes: [], color: "" };
+const emptyForm = { name: "", category: "", unit: "KG", costPrice: "", sellingPrice: "", stockQty: "", lowStockThreshold: "10", supplierId: "", barcode: "", barcodes: [], color: "", taxable: true };
 const PAGE_SIZE = 12;
 
 export default function Products() {
@@ -77,6 +77,7 @@ export default function Products() {
       barcode: p.barcode || "",
       barcodes: (p.barcodes || []).map((b) => ({ code: b.code, label: b.label || "" })),
       color: p.color || "",
+      taxable: p.taxable !== false,
     });
     setError("");
     setEditing(p);
@@ -157,6 +158,7 @@ export default function Products() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium text-sm break-words dark:text-gray-100">{p.name}</div>
                     {low && <span className="text-[10px] font-semibold bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full shrink-0">LOW STOCK</span>}
+                    {p.taxable === false && <span className="text-[10px] font-semibold bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 px-2 py-0.5 rounded-full shrink-0">TAX-FREE</span>}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     <span className="capitalize">{p.category}</span>
@@ -283,6 +285,13 @@ export default function Products() {
               </div>
               {!form.color && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Auto picks a color from the category.</p>}
             </div>
+            <label className="flex items-start gap-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/40 px-3 py-2.5 cursor-pointer">
+              <input type="checkbox" checked={form.taxable} onChange={(e) => setForm({ ...form, taxable: e.target.checked })} className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-brand-500 focus:ring-brand-500" />
+              <span>
+                <span className="block text-sm font-medium text-gray-800 dark:text-gray-200">Charge tax on this product</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">Switch off for tax-free items, such as raw meat in many places. Taxes are set up in Settings.</span>
+              </span>
+            </label>
             <div className="space-y-2">
               <Field label="Barcode" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan or type a barcode…" />
               {form.barcode.trim() && <p className="text-[11px] text-gray-400 dark:text-gray-500">Looks like: {barcodeType(form.barcode)}</p>}

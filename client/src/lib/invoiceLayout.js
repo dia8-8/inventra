@@ -167,7 +167,12 @@ export const SAMPLE_ORDER = {
   subtotal: 164,
   discount: 10,
   deliveryFee: 8,
-  total: 162,
+  taxTotal: 24.26,
+  taxes: [
+    { name: "GST", rate: 5, number: "123456789 RT0001", base: 162, amount: 8.1 },
+    { name: "QST", rate: 9.975, number: "1234567890 TQ0001", base: 162, amount: 16.16 },
+  ],
+  total: 186.26,
   amountPaid: 100,
   notes: "Please deliver before 9 AM, back entrance.",
   customer: { name: "Maple Diner", businessName: "Maple Diner Inc.", address: "123 Main Street, Montreal", phone: "514-555-0123" },

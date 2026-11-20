@@ -80,7 +80,10 @@ const GROUPS = [
   {
     key: "reports",
     label: "Reports",
-    permissions: [{ key: "reports.view", label: "View reports", description: "Sales, expenses and profit figures" }],
+    permissions: [
+      { key: "reports.view", label: "View reports", description: "Sales, expenses and profit figures" },
+      { key: "taxes.view", label: "View the tax report", description: "Tax collected, tax paid and the amount owed" },
+    ],
   },
   {
     key: "company",
@@ -133,6 +136,7 @@ const NOT_BY_DEFAULT = new Set([
   "invoices.design",
   "activity.view",
   "activity.delete",
+  "taxes.view",
 ]);
 const STAFF_DEFAULT = ALL.filter((k) => !NOT_BY_DEFAULT.has(k));
 const DRIVER_DEFAULT = ["orders.view", "orders.status", "deliveries.view"];

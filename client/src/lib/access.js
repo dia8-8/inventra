@@ -8,6 +8,7 @@ const CANDIDATES = [
   { to: "/suppliers", perm: "suppliers.view" },
   { to: "/expenses", perm: "expenses.view" },
   { to: "/reports", perm: "reports.view", feature: "reports" },
+  { to: "/taxes", perm: "taxes.view", feature: "reports" },
   { to: "/settings", perm: "settings.edit" },
   { to: "/settings/invoice", perm: "invoices.design" },
   { to: "/activity-log", perm: "activity.view", feature: "activity-log" },
