@@ -36,6 +36,9 @@ export function loadGooglePlaces() {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   if (!apiKey) return Promise.reject(new Error("VITE_GOOGLE_MAPS_API_KEY is not set"));
   bootstrap(apiKey);
-  placesLibPromise = window.google.maps.importLibrary("places");
+  placesLibPromise = window.google.maps.importLibrary("places").catch((err) => {
+    placesLibPromise = null; // a failed load (offline, blocked) can be retried instead of sticking until a page reload
+    throw err;
+  });
   return placesLibPromise;
 }
