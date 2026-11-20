@@ -13,6 +13,7 @@ const TENANT_MODELS = new Set([
   "User",
   "Customer",
   "Product",
+  "ProductBarcode",
   "StockMovement",
   "Order",
   "ActivityLog",

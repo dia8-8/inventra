@@ -4,6 +4,7 @@ import { ListSkeleton } from "../components/ui";
 import { useNotify, errorMessage } from "../context/NotifyContext";
 import { useAuth } from "../context/AuthContext";
 import { COLOR_OPTIONS, COLOR_KEYS, productColor } from "../lib/categoryColor";
+import { barcodeType } from "../lib/barcodeType";
 import Modal from "../components/Modal";
 
 const UNITS = ["KG", "BOX", "PIECE", "BAG", "CARTON"];
@@ -12,7 +13,7 @@ function money(n) {
   return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(n || 0);
 }
 
-const emptyForm = { name: "", category: "", unit: "KG", costPrice: "", sellingPrice: "", stockQty: "", lowStockThreshold: "10", supplierId: "", barcode: "", color: "" };
+const emptyForm = { name: "", category: "", unit: "KG", costPrice: "", sellingPrice: "", stockQty: "", lowStockThreshold: "10", supplierId: "", barcode: "", barcodes: [], color: "" };
 const PAGE_SIZE = 12;
 
 export default function Products() {
@@ -74,6 +75,7 @@ export default function Products() {
       lowStockThreshold: p.lowStockThreshold,
       supplierId: p.supplierId || "",
       barcode: p.barcode || "",
+      barcodes: (p.barcodes || []).map((b) => ({ code: b.code, label: b.label || "" })),
       color: p.color || "",
     });
     setError("");
@@ -83,7 +85,13 @@ export default function Products() {
   async function handleSubmit(e) {
     e.preventDefault();
     try {
-      const payload = { ...form, supplierId: form.supplierId || null, color: form.color || null };
+      const payload = {
+        ...form,
+        supplierId: form.supplierId || null,
+        color: form.color || null,
+        // the full list of extra barcodes (blank rows are ignored)
+        barcodes: form.barcodes.filter((b) => b.code.trim()).map((b) => ({ code: b.code.trim(), label: b.label.trim() || null })),
+      };
       if (editing?.id) {
         await api.patch(`/products/${editing.id}`, payload);
       } else {
@@ -150,8 +158,12 @@ export default function Products() {
                     <div className="font-medium text-sm break-words dark:text-gray-100">{p.name}</div>
                     {low && <span className="text-[10px] font-semibold bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full shrink-0">LOW STOCK</span>}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">
-                    {[p.category, p.supplier?.name, p.barcode ? `#${p.barcode}` : null].filter(Boolean).join(" · ")}
+                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <span className="capitalize">{p.category}</span>
+                    {[p.supplier?.name, p.barcode ? `#${p.barcode}` : null, p.barcodes?.length ? `+${p.barcodes.length} more barcode${p.barcodes.length === 1 ? "" : "s"}` : null]
+                      .filter(Boolean)
+                      .map((part) => ` · ${part}`)
+                      .join("")}
                   </div>
                 </div>
                 <div className="hidden sm:block text-right w-20 shrink-0">
@@ -271,7 +283,51 @@ export default function Products() {
               </div>
               {!form.color && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Auto picks a color from the category.</p>}
             </div>
-            <Field label="Barcode" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan or type a barcode…" />
+            <div className="space-y-2">
+              <Field label="Barcode" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan or type a barcode…" />
+              {form.barcode.trim() && <p className="text-[11px] text-gray-400 dark:text-gray-500">Looks like: {barcodeType(form.barcode)}</p>}
+              {form.barcodes.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Other barcodes for the same item</div>
+                  {form.barcodes.map((b, i) => (
+                    <div key={i}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={b.code}
+                          onChange={(e) => setForm({ ...form, barcodes: form.barcodes.map((x, j) => (j === i ? { ...x, code: e.target.value } : x)) })}
+                          placeholder="Scan or type another barcode…"
+                          aria-label={`Extra barcode ${i + 1}`}
+                          className="input flex-1 min-w-0"
+                        />
+                        <input
+                          value={b.label}
+                          maxLength={60}
+                          onChange={(e) => setForm({ ...form, barcodes: form.barcodes.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })}
+                          placeholder="Note (e.g. Case)"
+                          aria-label={`Note for extra barcode ${i + 1}`}
+                          className="input w-28 sm:w-36 shrink-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, barcodes: form.barcodes.filter((_, j) => j !== i) })}
+                          aria-label={`Remove extra barcode ${i + 1}`}
+                          className="btn-ghost !p-2 text-gray-400 hover:text-red-500 shrink-0"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M6 6l12 12M18 6L6 18" />
+                          </svg>
+                        </button>
+                      </div>
+                      {b.code.trim() && <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">Looks like: {barcodeType(b.code)}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={() => setForm({ ...form, barcodes: [...form.barcodes, { code: "", label: "" }] })} className="btn-ghost btn-sm text-brand-600 dark:text-brand-400">
+                + Add another barcode for this item
+              </button>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">Use this when the same item comes with different codes: the retail pack, the case label, or another supplier's code. Scanning any of them finds this product.</p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier</label>
               <select

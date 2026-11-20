@@ -83,6 +83,24 @@ model User {
   @@index([tenantId])
 }
 
+// Extra barcodes for the same item (a retail code, a case code, a supplier's code ...).
+// The product's main barcode stays on Product.barcode.
+model ProductBarcode {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  code      String
+  label     String? // e.g. "Case label", "Supplier Acme"
+  createdAt DateTime @default(now())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, code])
+  @@index([productId])
+  @@index([tenantId])
+}
+
 // One-time password reset links. Only a hash of the token is stored.
 model PasswordResetToken {
   id        String    @id @default(cuid())
@@ -139,6 +157,7 @@ model Product {
   orderItems     OrderItem[]
   stockMovements StockMovement[]
   customPrices   CustomerPrice[]
+  barcodes       ProductBarcode[]
 
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
@@ -346,6 +365,7 @@ model Tenant {
   users          User[]
   customers      Customer[]
   products       Product[]
+  productBarcodes ProductBarcode[]
   stockMovements StockMovement[]
   orders         Order[]
   activityLogs   ActivityLog[]

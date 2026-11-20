@@ -7,6 +7,13 @@ const { logActivity } = require("../lib/activityLog");
 const router = express.Router();
 router.use(requireAuth);
 
+// A product has one main barcode (Product.barcode) and any number of extra ones
+// (retail code, case code, a supplier's code ...) that all mean the same item.
+const PRODUCT_INCLUDE = {
+  supplier: { select: { id: true, name: true } },
+  barcodes: { select: { id: true, code: true, label: true }, orderBy: { createdAt: "asc" } },
+};
+
 function buildProductWhere(req) {
   const { search, category } = req.query;
   return {
@@ -30,10 +37,12 @@ router.get("/count", requireAnyPermission("products.view", "orders.create", "ord
   res.json({ total });
 });
 
+// Matches the main barcode or any of the extra ones
 router.get("/by-barcode/:code", requireAnyPermission("products.view", "orders.create", "orders.edit", "inventory.view", "inventory.adjust", "reports.view"), requireFeature("barcode"), async (req, res) => {
+  const code = req.params.code;
   const product = await prisma.product.findFirst({
-    where: { barcode: req.params.code, active: true },
-    include: { supplier: { select: { id: true, name: true } } },
+    where: { active: true, OR: [{ barcode: code }, { barcodes: { some: { code } } }] },
+    include: PRODUCT_INCLUDE,
   });
   if (!product) return res.status(404).json({ error: "No product with that barcode" });
   res.json(product);
@@ -46,7 +55,7 @@ router.get("/", requireAnyPermission("products.view", "orders.create", "orders.e
   let products = await prisma.product.findMany({
     where,
     orderBy: { name: "asc" },
-    include: { supplier: { select: { id: true, name: true } } },
+    include: PRODUCT_INCLUDE,
     ...(limit && lowStock !== "true" ? { take: Math.min(Number(limit), 200), skip: Number(offset) || 0 } : {}),
   });
 
@@ -81,19 +90,62 @@ const productSchema = z.object({
     .nullable()
     .transform((v) => (v ? v.trim() : null))
     .transform((v) => v || null),
+  // the extra barcodes for this item; sending the list replaces the product's current extras
+  barcodes: z
+    .array(z.object({ code: z.string().trim().min(1).max(64), label: z.string().trim().max(60).optional().nullable() }))
+    .max(30)
+    .optional(),
 });
+
+// Tidies the extra barcodes: drops blanks and the main barcode, rejects a code listed twice
+function cleanExtras(list, primary) {
+  const seen = new Set();
+  const out = [];
+  for (const item of list || []) {
+    const code = item.code.trim();
+    if (!code || code === primary) continue;
+    if (seen.has(code)) return { error: `The barcode ${code} is listed twice` };
+    seen.add(code);
+    out.push({ code, label: item.label?.trim() || null });
+  }
+  return { extras: out };
+}
+
+// A code can belong to only one product (as its main barcode or one of its extras)
+async function findBarcodeConflict(codes, ownProductId) {
+  if (!codes.length) return null;
+  const others = ownProductId ? { id: { not: ownProductId } } : {};
+  const asMain = await prisma.product.findFirst({ where: { barcode: { in: codes }, ...others }, select: { barcode: true, name: true } });
+  if (asMain) return { code: asMain.barcode, name: asMain.name };
+  const asExtra = await prisma.productBarcode.findFirst({
+    where: { code: { in: codes }, ...(ownProductId ? { productId: { not: ownProductId } } : {}) },
+    include: { product: { select: { name: true } } },
+  });
+  return asExtra ? { code: asExtra.code, name: asExtra.product.name } : null;
+}
+
+const conflictMessage = (c) => `The barcode ${c.code} is already used by "${c.name}"`;
 
 router.post("/", requirePermission("products.create"), async (req, res) => {
   const parsed = productSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  if (parsed.data.supplierId && !(await prisma.supplier.findUnique({ where: { id: parsed.data.supplierId } }))) {
+  const { barcodes, ...data } = parsed.data;
+  if (data.supplierId && !(await prisma.supplier.findUnique({ where: { id: data.supplierId } }))) {
     return res.status(400).json({ error: "Supplier not found" });
   }
 
+  const cleaned = cleanExtras(barcodes, data.barcode);
+  if (cleaned.error) return res.status(400).json({ error: cleaned.error });
+  const conflict = await findBarcodeConflict([data.barcode, ...cleaned.extras.map((e) => e.code)].filter(Boolean), null);
+  if (conflict) return res.status(409).json({ error: conflictMessage(conflict) });
+
   try {
-    const product = await prisma.product.create({ data: parsed.data });
-    await logActivity({ userId: req.user.id, action: "CREATE", entityType: "Product", entityId: product.id, details: parsed.data });
-    res.status(201).json(product);
+    const created = await prisma.product.create({ data });
+    if (cleaned.extras.length) {
+      await prisma.productBarcode.createMany({ data: cleaned.extras.map((e) => ({ productId: created.id, code: e.code, label: e.label })) });
+    }
+    await logActivity({ userId: req.user.id, action: "CREATE", entityType: "Product", entityId: created.id, details: { ...data, ...(cleaned.extras.length ? { barcodes: cleaned.extras.map((e) => e.code) } : {}) } });
+    res.status(201).json(await prisma.product.findUnique({ where: { id: created.id }, include: PRODUCT_INCLUDE }));
   } catch (err) {
     if (err.code === "P2002") return res.status(409).json({ error: "That barcode is already assigned to another product" });
     console.error("Create product error:", err);
@@ -104,14 +156,37 @@ router.post("/", requirePermission("products.create"), async (req, res) => {
 router.patch("/:id", requirePermission("products.edit"), async (req, res) => {
   const parsed = productSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-  if (parsed.data.supplierId && !(await prisma.supplier.findUnique({ where: { id: parsed.data.supplierId } }))) {
+  const { barcodes, ...data } = parsed.data;
+  if (data.supplierId && !(await prisma.supplier.findUnique({ where: { id: data.supplierId } }))) {
     return res.status(400).json({ error: "Supplier not found" });
   }
 
+  const existing = await prisma.product.findUnique({ where: { id: req.params.id }, include: { barcodes: true } });
+  if (!existing) return res.status(404).json({ error: "Product not found" });
+
+  const primary = data.barcode !== undefined ? data.barcode : existing.barcode;
+  let extras = null; // null = leave the current extras alone
+  if (barcodes !== undefined) {
+    const cleaned = cleanExtras(barcodes, primary);
+    if (cleaned.error) return res.status(400).json({ error: cleaned.error });
+    extras = cleaned.extras;
+  } else if (data.barcode && existing.barcodes.some((b) => b.code === data.barcode)) {
+    // an extra barcode was promoted to the main one: it no longer needs to be an extra
+    extras = existing.barcodes.filter((b) => b.code !== data.barcode).map((b) => ({ code: b.code, label: b.label }));
+  }
+
+  const toCheck = [data.barcode, ...(extras || []).map((e) => e.code)].filter(Boolean);
+  const conflict = await findBarcodeConflict(toCheck, existing.id);
+  if (conflict) return res.status(409).json({ error: conflictMessage(conflict) });
+
   try {
-    const product = await prisma.product.update({ where: { id: req.params.id }, data: parsed.data });
-    await logActivity({ userId: req.user.id, action: "UPDATE", entityType: "Product", entityId: product.id, details: parsed.data });
-    res.json(product);
+    await prisma.product.update({ where: { id: existing.id }, data });
+    if (extras !== null) {
+      await prisma.productBarcode.deleteMany({ where: { productId: existing.id } });
+      if (extras.length) await prisma.productBarcode.createMany({ data: extras.map((e) => ({ productId: existing.id, code: e.code, label: e.label })) });
+    }
+    await logActivity({ userId: req.user.id, action: "UPDATE", entityType: "Product", entityId: existing.id, details: { ...data, ...(extras !== null ? { barcodes: extras.map((e) => e.code) } : {}) } });
+    res.json(await prisma.product.findUnique({ where: { id: existing.id }, include: PRODUCT_INCLUDE }));
   } catch (err) {
     if (err.code === "P2002") return res.status(409).json({ error: "That barcode is already assigned to another product" });
     console.error("Update product error:", err);
@@ -137,7 +212,8 @@ router.delete("/:id", requirePermission("products.delete"), async (req, res) => 
     return res.json({ deleted: true, archived: false });
   }
 
-  // Free the barcode so it can be reused on a new product
+  // Free every barcode so they can be reused on a new product
+  await prisma.productBarcode.deleteMany({ where: { productId: product.id } });
   await prisma.product.update({ where: { id: product.id }, data: { active: false, barcode: null } });
   await logActivity({ userId: req.user.id, action: "DELETE", entityType: "Product", entityId: product.id, details: { name: product.name, archived: true } });
   res.json({ deleted: true, archived: true });

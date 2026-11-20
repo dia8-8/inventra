@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import api from "../api/client";
 import { parseVariableWeightCode } from "../lib/variableWeightBarcode";
+import { parseGs1, gtinVariants, gs1Quantity, describeGs1 } from "../lib/gs1";
 
 const CAMERA_DIV_ID = "scan-camera-reader";
 
@@ -20,6 +21,9 @@ export default function Scan() {
   const [cameraError, setCameraError] = useState("");
   const [linkProductId, setLinkProductId] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [torch, setTorch] = useState({ supported: false, on: false });
+  const [zoom, setZoom] = useState(null); // { min, max, step, value } when the phone can zoom
+  const audioRef = useRef(null);
 
   const inputRef = useRef(null);
   const lastScanRef = useRef({ code: "", time: 0 });
@@ -56,11 +60,18 @@ export default function Scan() {
       }
       html5QrRef.current = null;
       setCameraOn(false);
+      setTorch({ supported: false, on: false });
+      setZoom(null);
       return;
     }
 
     setCameraError("");
     setCameraStarting(true);
+    try {
+      audioRef.current = audioRef.current || new (window.AudioContext || window.webkitAudioContext)();
+    } catch {
+      // no sound on this browser; scanning still works
+    }
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("This browser doesn't support camera access (getUserMedia unavailable).");
@@ -71,7 +82,18 @@ export default function Scan() {
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 280, height: 180 },
+          // wide and fairly short, to suit long barcodes (the old 280px window made them unreadable)
+          qrbox: (viewWidth, viewHeight) => ({
+            width: Math.floor(viewWidth * 0.94),
+            height: Math.floor(Math.min(viewHeight * 0.6, 220)),
+          }),
+          // ask the phone for a high-resolution picture and continuous autofocus
+          videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            advanced: [{ focusMode: "continuous" }],
+          },
           formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.EAN_8,
@@ -89,6 +111,17 @@ export default function Scan() {
         () => {}
       );
       setCameraOn(true);
+      // flashlight and zoom, where the phone offers them
+      try {
+        const caps = instance.getRunningTrackCameraCapabilities();
+        setTorch({ supported: Boolean(caps.torchFeature().isSupported()), on: false });
+        const z = caps.zoomFeature();
+        setZoom(z.isSupported() ? { min: z.min(), max: z.max(), step: z.step() || 0.1, value: z.value() ?? z.min() } : null);
+      } catch {
+        setTorch({ supported: false, on: false });
+        setZoom(null);
+      }
+      instance.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
     } catch (err) {
       html5QrRef.current = null;
       setCameraError(
@@ -99,6 +132,67 @@ export default function Scan() {
     } finally {
       setCameraStarting(false);
     }
+  }
+
+  async function toggleTorch() {
+    try {
+      await html5QrRef.current.getRunningTrackCameraCapabilities().torchFeature().apply(!torch.on);
+      setTorch((t) => ({ ...t, on: !t.on }));
+    } catch {
+      setCameraError("This browser couldn't switch the flashlight on.");
+    }
+  }
+
+  async function changeZoom(value) {
+    try {
+      await html5QrRef.current.getRunningTrackCameraCapabilities().zoomFeature().apply(value);
+      setZoom((z) => ({ ...z, value }));
+    } catch {
+      // ignore: the slider just won't move
+    }
+  }
+
+  // One-shot autofocus (tap the picture), then back to continuous focus
+  async function refocus() {
+    if (!html5QrRef.current) return;
+    try {
+      await html5QrRef.current.applyVideoConstraints({ advanced: [{ focusMode: "single-shot" }] });
+      setTimeout(() => html5QrRef.current?.applyVideoConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {}), 1500);
+    } catch {
+      // this phone doesn't allow focus control from the browser
+    }
+  }
+
+  // A short beep and vibration so you know a scan went through without looking at the screen
+  function confirmScan() {
+    try {
+      navigator.vibrate?.(80);
+    } catch {
+      // not supported
+    }
+    try {
+      const ctx = audioRef.current;
+      if (!ctx) return;
+      if (ctx.state === "suspended") ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      gain.gain.value = 0.08;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch {
+      // no sound
+    }
+  }
+
+  async function lookupFirst(codes) {
+    for (const c of codes) {
+      const product = await lookupProduct(c);
+      if (product) return product;
+    }
+    return null;
   }
 
   function handleKeyDown(e) {
@@ -130,6 +224,19 @@ export default function Scan() {
     setProcessing(true);
     setStatus(null);
     try {
+      // Supplier case labels carry the product code and weight inside one long barcode.
+      const gs1 = parseGs1(code);
+      if (gs1) {
+        const product = await lookupFirst(gtinVariants(gs1.gtin));
+        if (product) {
+          const q = gs1Quantity(product, gs1);
+          await addStock(product, gs1.gtin, q.quantity, { unit: q.unit, note: describeGs1(gs1) });
+          return;
+        }
+        setStatus({ type: "notfound", code: gs1.gtin, gs1 });
+        return;
+      }
+
       // Try the raw scanned code first (fixed-barcode products).
       const direct = await lookupProduct(code);
       if (direct) {
@@ -157,18 +264,19 @@ export default function Scan() {
     }
   }
 
-  async function addStock(product, code, weightOverride) {
+  async function addStock(product, code, weightOverride, meta) {
     const usesWeight = weightOverride != null;
     const qty = usesWeight ? weightOverride : Number(quantity) || 1;
-    const unit = usesWeight ? settings?.variableWeightUnit || "" : "";
+    const unit = meta?.unit ?? (usesWeight ? settings?.variableWeightUnit || "" : "");
     try {
       await api.post("/inventory/movements", {
         productId: product.id,
         type: "IN",
         quantity: qty,
-        reason: reason || `Scanned${code ? ` (${code})` : ""}${usesWeight ? ` · ${qty}${unit}` : ""}`,
+        reason: reason || (meta?.note ? `Scanned ${meta.note}` : `Scanned${code ? ` (${code})` : ""}${usesWeight ? ` · ${qty}${unit}` : ""}`),
         supplierId: supplierId || null,
       });
+      confirmScan();
       setStatus({ type: "success", product, quantity: qty, unit });
       setRecent((prev) =>
         [{ id: `${Date.now()}-${product.id}`, name: product.name, quantity: qty, unit, time: new Date() }, ...prev].slice(0, 15)
@@ -182,8 +290,19 @@ export default function Scan() {
     if (!linkProductId || !status?.code) return;
     setProcessing(true);
     try {
-      const { data: product } = await api.patch(`/products/${linkProductId}`, { barcode: status.code });
-      await addStock(product, status.code, status.weight ?? null);
+      // A product that already has a barcode keeps it: the scanned code is added as another one
+      const target = products.find((p) => p.id === linkProductId);
+      const body = target?.barcode
+        ? { barcodes: [...(target.barcodes || []).map((b) => ({ code: b.code, label: b.label })), { code: status.code, label: status.gs1 ? "Case label" : null }] }
+        : { barcode: status.code };
+      const { data: product } = await api.patch(`/products/${linkProductId}`, body);
+      setProducts((prev) => prev.map((p) => (p.id === product.id ? product : p)));
+      if (status.gs1) {
+        const q = gs1Quantity(product, status.gs1);
+        await addStock(product, status.code, q.quantity, { unit: q.unit, note: describeGs1(status.gs1) });
+      } else {
+        await addStock(product, status.code, status.weight ?? null);
+      }
       setLinkProductId("");
     } catch (err) {
       setStatus({ type: "error", message: err.response?.data?.error || "Could not link barcode" });
@@ -269,7 +388,7 @@ export default function Scan() {
         </button>
         {cameraError && <p className="text-xs text-red-600 dark:text-red-400">{cameraError}</p>}
 
-        <div className="relative mt-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 h-[280px] bg-gray-50 dark:bg-gray-900/60">
+        <div onClick={refocus} className="relative mt-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 h-[320px] bg-gray-50 dark:bg-gray-900/60">
           <div id={CAMERA_DIV_ID} className="w-full h-full" />
           {!cameraOn && (
             <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 dark:text-gray-500 pointer-events-none px-4 text-center">
@@ -277,6 +396,36 @@ export default function Scan() {
             </div>
           )}
         </div>
+        {cameraOn && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button type="button" onClick={refocus} className="btn-secondary btn-sm">
+              Refocus
+            </button>
+            {torch.supported && (
+              <button type="button" onClick={toggleTorch} aria-pressed={torch.on} className="btn-secondary btn-sm">
+                {torch.on ? "Flashlight off" : "Flashlight"}
+              </button>
+            )}
+            {zoom && (
+              <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                Zoom
+                <input
+                  type="range"
+                  min={zoom.min}
+                  max={zoom.max}
+                  step={zoom.step}
+                  value={zoom.value}
+                  onChange={(e) => changeZoom(Number(e.target.value))}
+                  aria-label="Camera zoom"
+                  className="w-32 accent-brand-500"
+                />
+              </label>
+            )}
+          </div>
+        )}
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          Long case labels: hold the phone about 20–30 cm away with the bars level, use Zoom to fill the window, and tap the picture to refocus. A sharp image matters more than getting close.
+        </p>
       </div>
 
       {status?.type === "success" && (
@@ -297,6 +446,10 @@ export default function Scan() {
             )}
             .
           </div>
+          {status.gs1 && <div className="text-xs text-amber-700/80 dark:text-amber-300/80">{describeGs1(status.gs1)}</div>}
+          {products.find((p) => p.id === linkProductId)?.barcode && (
+            <div className="text-xs text-amber-700/80 dark:text-amber-300/80">This product already has a barcode. The scanned code is added as another one for the same item.</div>
+          )}
           <div className="flex gap-2">
             <select
               value={linkProductId}
@@ -307,6 +460,7 @@ export default function Scan() {
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
+                  {p.barcode ? ` · ${p.barcode.length > 14 ? p.barcode.slice(0, 14) + "…" : p.barcode}` : ""}
                 </option>
               ))}
             </select>
